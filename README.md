@@ -2,7 +2,7 @@
 
 Web ôn luyện **ngữ pháp IELTS** — điểm danh mỗi ngày, quiz theo ngày, flashcards và ôn lặp lại ngắt quãng để tiến bộ đều đặn.
 
-🔗 **Bản demo:** https://rei-1407.github.io/IELTS/
+🔗 **Bản demo:** https://reix-labs.github.io/IELTS/
 
 ---
 
