@@ -9,12 +9,13 @@
   <meta name="generator" content="ReiX Labs">
   <link rel="icon" type="image/png" href="img/reix-favicon.png">
   <link rel="apple-touch-icon" href="img/reix-favicon.png">
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
+  <a class="skip-link" href="#view">Bỏ qua menu, đến nội dung</a>
   <header class="topbar">
     <a class="brand" href="#/"><span class="reix-mark" role="img" aria-label="ReiX Labs"></span> <span>IELTS <b>7.5</b></span></a>
-    <nav class="nav" id="nav">
+    <nav class="nav" id="nav" aria-label="Điều hướng chính">
       <a href="#/" data-route="home">Trang chủ</a>
       <a href="#/learn" data-route="learn">Học</a>
       <a href="#/quiz" data-route="quiz">Quiz ngày</a>
@@ -24,52 +25,36 @@
       <a href="#/awards" data-route="awards">Thành tích</a>
     </nav>
     <div class="topbar-right">
-      <span class="xp-pill" id="xpPill" title="XP & cấp độ — bấm xem thành tích" onclick="location.hash='#/awards'"><span class="band">Band 3.0</span> · 0 XP</span>
+      <a class="xp-pill" id="xpPill" href="#/awards" title="XP & cấp độ — bấm xem thành tích"><span class="band">Band 3.0</span> · 0 XP</a>
       <span class="streak-pill" id="streakPill" title="Chuỗi ngày học liên tiếp">🔥 0</span>
-      <button class="icon-btn" id="themeBtn" title="Đổi giao diện sáng/tối">🌙</button>
+      <button class="icon-btn" id="themeBtn" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng hoặc tối">🌙</button>
     </div>
   </header>
 
-  <main id="view" class="view">
+  <main id="view" class="view" tabindex="-1">
     <div class="loading">
       <div class="spinner"></div>
       <p>Đang tải tài liệu…</p>
     </div>
   </main>
 
-  <script src="js/md.js?v=5"></script>
-  <script src="js/parser.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/md.js?v=12"></script>
+  <script src="js/parser.js?v=12"></script>
+  <script src="js/lesson-guide.js?v=12"></script>
+  <script src="js/app.js?v=12"></script>
 
   <!-- ============================================================
        Sản phẩm thuộc sở hữu của team ReiX Labs · © ReiX Labs
        Vui lòng không sao chép/tái phân phối khi chưa được phép.
        ============================================================ -->
-  <style>
-    .reix-credit{position:fixed;right:14px;bottom:14px;z-index:2147483000;display:flex;align-items:center;gap:9px;
-      padding:6px 13px;border-radius:14px;background:rgba(255,255,255,.95);
-      box-shadow:0 3px 14px rgba(30,20,70,.22);border:1px solid rgba(90,58,166,.20);
-      text-decoration:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-      transform-origin:100% 100%;transition:transform .2s ease,box-shadow .2s ease}
-    .reix-credit:hover{transform:scale(2);box-shadow:0 12px 34px rgba(30,20,70,.42)}
-    .reix-credit__by{font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#6b5aa0;letter-spacing:.03em;white-space:nowrap}
-    .reix-credit img{height:32px;width:auto;display:block}
-    .reix-credit .rx-white{display:none}
-    .reix-mark{display:inline-block;vertical-align:middle;width:48px;height:26px;background:url(img/reix-logo.png) center/contain no-repeat!important;background-color:transparent!important;color:transparent!important;font-size:0!important;line-height:0!important;border-radius:0!important;box-shadow:none!important;filter:none!important}
-    [data-theme="dark"] .reix-mark{background-image:url(img/reix-logo-white.png)!important}
-    .reix-footer{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:2147482000;pointer-events:none;white-space:nowrap;padding:3px 13px;border-radius:999px;font:600 11px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;color:#6b6a78;background:rgba(255,255,255,.72);border:1px solid rgba(0,0,0,.05);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-    .reix-footer b{color:#6b5aa0}
-    [data-theme="dark"] .reix-footer{color:#a7a3c2;background:rgba(20,22,30,.6);border-color:rgba(255,255,255,.08)}
-    [data-theme="dark"] .reix-footer b{color:#c3bbf0}
-    @media (max-width:520px){.reix-footer{font-size:10px;padding:3px 10px}}
-    @media (max-width:640px){.reix-credit__by{display:none}.reix-credit{padding:5px 9px;right:10px;bottom:10px}.reix-credit img{height:26px}}
-  </style>
-  <footer class="reix-footer">Sản phẩm của <b>ReiX&nbsp;Labs</b> · © 2026 ReiX Labs</footer>
+  <footer class="site-footer">
+  <span class="reix-footer">Sản phẩm của <b>ReiX&nbsp;Labs</b> · © 2026 ReiX Labs</span>
   <a class="reix-credit" href="https://github.com/Rei-1407" target="_blank" rel="noopener"
      title="Sản phẩm của team ReiX Labs" aria-label="Sản phẩm của team ReiX Labs">
     <span class="reix-credit__by">Made by</span>
     <img class="rx-color" src="img/reix-logo.png" alt="ReiX Labs" />
     <img class="rx-white" src="img/reix-logo-white.png" alt="ReiX Labs" />
   </a>
+  </footer>
 </body>
 </html>

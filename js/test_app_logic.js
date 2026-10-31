@@ -156,5 +156,21 @@ A.counters().vocabAdded = 50;
 A.awardBadges();
 check('huy hiệu vocab50 mở', !!A.gam().badges.vocab50);
 
+// Existing progress must survive loading/saving with new reader preferences.
+const savedProgress = {
+  settings: { theme: 'light', lastChapter: 'c23', tocWidth: 280, readerMode: 'all', readingSections: { c23: 2 } },
+  checkins: { '2026-10-20': { learned: ['c1'], quiz: { score: 8, total: 10 }, bonus: true } },
+  chapters: { c1: { learnedOn: '2026-10-20', interval: 8, next: '2026-11-01' } },
+  best: { streak: 7 },
+  gam: { xp: 1234, examDate: '2026-12-01', badges: { quiz1: '2026-10-20' }, counters: { quizzes: 6, correct: 41 } },
+  items: { p12ddoy9: { b: 3, s: 8, c: 7, n: '2026-11-04' } },
+  vocab: [{ id: 'wcustom', w: 'resilient', m: 'kiên cường', ex: 'A resilient community.', addedOn: '2026-10-20' }]
+};
+localStorage.setItem('ielts75_v1', JSON.stringify(savedProgress));
+A.store.load();
+A.store.save();
+check('load/save giữ nguyên tiến độ cũ và tuỳ chọn đọc',
+  require('node:util').isDeepStrictEqual(JSON.parse(localStorage.getItem('ielts75_v1')), savedProgress));
+
 console.log(fails === 0 ? '\nALL PASS' : '\n' + fails + ' FAILED');
 process.exit(fails ? 1 : 0);

@@ -17,12 +17,23 @@ const cacheById = new Map();   // era:id -> stub
 const cacheBySel = new Map();  // era:sel -> [stubs]
 
 function makeStub(extra, isView) {
+  const attributes = {};
+  const classes = new Set();
   const el = {
     _inner: '',
-    style: { setProperty() {} }, dataset: {}, classList: { toggle() {}, add() {}, remove() {} },
+    style: { setProperty() {} }, dataset: {},
+    classList: {
+      toggle(name, force) { const on = force === undefined ? !classes.has(name) : force; if (on) classes.add(name); else classes.delete(name); return on; },
+      add(...names) { names.forEach(name => classes.add(name)); },
+      remove(...names) { names.forEach(name => classes.delete(name)); },
+      contains(name) { return classes.has(name); }
+    },
+    setAttribute(name, value) { attributes[name] = String(value); },
+    getAttribute(name) { return attributes[name] === undefined ? null : attributes[name]; },
+    removeAttribute(name) { delete attributes[name]; },
     onclick: null, oninput: null, onblur: null, onkeydown: null, onchange: null,
-    disabled: false, value: '', textContent: '', scrollLeft: 0, scrollWidth: 0,
-    focus() {}, click() {}, scrollIntoView() {}, remove() {}, appendChild() {},
+    disabled: false, hidden: false, value: '', textContent: '', scrollLeft: 0, scrollWidth: 0,
+    focus() { this._focused = true; }, click() { if (this.onclick) this.onclick({ preventDefault() {} }); }, scrollIntoView() { this._scrolled = true; }, remove() {}, appendChild() {},
     files: [], className: '',
     querySelectorAll(sel) { return queryAllIn(this._inner, sel); },
   };
@@ -51,6 +62,10 @@ function byId(id) {
   return cacheById.get(key);
 }
 function countIn(html, sel) {
+  if (sel === '.section-toc a') {
+    const outline = (html.match(/<ol class="section-toc">([\s\S]*?)<\/ol>/) || [])[1] || '';
+    return (outline.match(/<a /g) || []).length;
+  }
   const map = {
     '.q-opt': /class="q-opt"/g,
     '.toc-item': /class="toc-item/g,
@@ -68,7 +83,7 @@ function queryAllIn(html, sel) {
   const key = era + ':' + sel;
   if (!cacheBySel.has(key)) {
     const arr = [];
-    for (let i = 0; i < n; i++) { const s = makeStub(); s.dataset.i = String(i); s.dataset.ch = 'c1'; s.dataset.route = 'home'; arr.push(s); }
+    for (let i = 0; i < n; i++) { const s = makeStub(); s.dataset.i = String(i); s.dataset.index = String(i); s.dataset.ch = 'c1'; s.dataset.route = 'home'; arr.push(s); }
     cacheBySel.set(key, arr);
   }
   return cacheBySel_get(key, n);
@@ -86,6 +101,7 @@ const window = {
   addEventListener(ev, fn) { listeners[ev] = fn; },
   scrollTo() {},
 };
+new Function('window', fs.readFileSync(path.join(__dirname, 'lesson-guide.js'), 'utf8'))(window);
 const document = {
   documentElement: { dataset: {} },
   body: makeStub(),
@@ -104,7 +120,14 @@ function FileReader() { this.readAsText = () => {}; }
 
 /* ---------- chạy app.js ---------- */
 const src = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
-const run = new Function('window', 'document', 'location', 'localStorage', 'fetch', 'confirm', 'alert', 'URL', 'Blob', 'FileReader', 'setTimeout', 'console', src);
+// Expose actual closure functions only in this test process, without shipping test hooks.
+const instrumentAt = src.lastIndexOf('  boot();');
+if (instrumentAt < 0) throw new Error('Cannot instrument app boot');
+const instrumented = src.slice(0, instrumentAt) + `
+  window.__testReader = { buildLessonSections, gotoSection, store,
+    get state() { return readerState; }, get data() { return DATA; } };
+` + src.slice(instrumentAt);
+const run = new Function('window', 'document', 'location', 'localStorage', 'fetch', 'confirm', 'alert', 'URL', 'Blob', 'FileReader', 'setTimeout', 'console', instrumented);
 
 let fails = 0;
 const check = (n, c, info) => { if (c) console.log('PASS', n, info || ''); else { console.error('FAIL', n, info || ''); fails++; } };
@@ -125,6 +148,76 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('learn c3 render', htmlLog.includes('Thì động từ') && htmlLog.includes('Present Simple'));
   check('learn có nút luyện chương', htmlLog.includes('Luyện chương này'));
   check('learn có thanh kéo cột', htmlLog.includes('tocResizer'));
+  const reader = window.__testReader;
+  const unchangedLearningData = () => {
+    const saved = JSON.parse(localStorage.getItem('ielts75_v1'));
+    delete saved.settings;
+    return JSON.stringify(saved);
+  };
+  const beforeReading = unchangedLearningData();
+  const originalSections = reader.data.chapters.find(ch => ch.id === 'c3').lines.filter(line => /^### /.test(line));
+  const renderedSections = reader.state.sections;
+  check('bài có mục tiêu → lý thuyết → tự luyện → tiêu chí',
+    renderedSections[0].kind === 'start' && renderedSections[1].kind === 'theory' &&
+    renderedSections.at(-2).kind === 'practice' && renderedSections.at(-1).kind === 'check');
+  check('mọi mục lý thuyết c3 và anchor cũ đều tồn tại',
+    renderedSections.filter(section => section.kind === 'theory').length === originalSections.length &&
+    originalSections.every((heading, index) => htmlLog.includes(`id="sec-c3-${index}"`)));
+  check('đọc từng phần mặc định chỉ hiện 1 phần',
+    document.querySelectorAll('.lesson-section').filter(el => !el.hidden).length === 1 && byId('sectionPrevBtn').disabled);
+  byId('sectionNextBtn').onclick();
+  check('nút tiếp chuyển phần, lưu vị trí và cập nhật phần đang đọc',
+    reader.state.index === 1 && byId('readerPosition').textContent.startsWith('Phần 2/') &&
+    JSON.parse(localStorage.getItem('ielts75_v1')).settings.readingSections.c3 === 1);
+  check('mục lục xác định đúng phần đang đọc',
+    document.querySelectorAll('.section-toc a')[1].getAttribute('aria-current') === 'step');
+  byId('readerAllBtn').onclick();
+  check('xem toàn bài hiện tất cả các phần',
+    document.querySelectorAll('.lesson-section').every(el => !el.hidden) && byId('readerAllBtn').getAttribute('aria-pressed') === 'true');
+  byId('readerFocusBtn').onclick();
+  check('chuyển lại đọc từng phần giữ đúng vị trí',
+    reader.state.index === 1 && document.querySelectorAll('.lesson-section').filter(el => !el.hidden).length === 1);
+  goto('#/learn/c3/5');
+  check('link mục cụ thể mở đúng phần dù đang đọc từng phần',
+    reader.state.chId === 'c3' && reader.state.index === 6 && !document.querySelectorAll('.lesson-section')[6].hidden);
+  goto('#/learn/c3/check');
+  check('phần tự kiểm tra có nút tiếp vô hiệu hoá',
+    reader.state.sections[reader.state.index].kind === 'check' && byId('sectionNextBtn').disabled);
+  goto('#/learn/c3');
+  check('quay lại bài giữ phần vừa đọc', reader.state.sections[reader.state.index].kind === 'check');
+  reader.gotoSection('c3', 5);
+  check('tìm trong bài mở phần ẩn trước khi cuộn tới mục',
+    reader.state.index === 6 && !document.querySelectorAll('.lesson-section')[6].hidden);
+  byId('searchInput').value = 'dao ngu';
+  byId('searchInput').oninput();
+  check('tìm không dấu có kết quả rõ chủ điểm',
+    byId('searchResults').innerHTML.includes('Đảo ngữ') && byId('searchResults').querySelectorAll('.res').length > 0);
+  byId('searchInput').onkeydown({ key: 'Enter', preventDefault() {} });
+  goto(location.hash);
+  check('Enter trong tìm kiếm mở đúng chương và phần', reader.state.chId === 'c14' && reader.state.index === 0);
+  byId('searchInput').value = 'khongtimthaychuoi123';
+  byId('searchInput').oninput();
+  check('tìm không có kết quả có hướng dẫn', byId('searchResults').innerHTML.includes('Chưa có kết quả'));
+  byId('searchInput').onkeydown({ key: 'Escape' });
+  check('Escape đóng kết quả và cập nhật trạng thái truy cập',
+    byId('searchResults').style.display === 'none' && byId('searchInput').getAttribute('aria-expanded') === 'false');
+  check('đọc và đổi chế độ không sửa XP, SRS, từ vựng hoặc hoàn thành bài', beforeReading === unchangedLearningData());
+
+  const textOnly = html => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  let intactTheory = true;
+  for (const chapter of reader.data.chapters) {
+    const sections = reader.buildLessonSections(chapter);
+    const chunks = chapter.md.split(/^### /m).slice(1);
+    if (new Set(sections.map(section => section.id)).size !== sections.length) intactTheory = false;
+    chunks.forEach((chunk, index) => {
+      const expected = renderMd('### ' + chunk).replace(/<h2>🔑 ĐÁP ÁN[\s\S]*?<\/h2>/g, '');
+      const actual = sections[index + 1].html
+        .replace(/<span class="section-label">[\s\S]*?<\/span>/g, '')
+        .replace(/<summary>[\s\S]*?<\/summary>/g, '');
+      if (textOnly(actual) !== textOnly(expected)) { intactTheory = false; console.error('THEORY MISMATCH', chapter.id, index); }
+    });
+  }
+  check('chia phần giữ toàn bộ lý thuyết, ví dụ, bảng và đáp án của 37 trang', intactTheory);
   goto('#/learn/appD');
   check('learn phụ lục D render', htmlLog.includes('Ngân hàng bài tập'));
 
@@ -241,6 +334,19 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   const st2 = JSON.parse(localStorage._d.ielts75_v1);
   check('XP tích lũy > 0', st2.gam && st2.gam.xp > 0, 'xp=' + (st2.gam && st2.gam.xp));
   check('có huy hiệu trong store', Object.keys(st2.gam.badges).length >= 1, Object.keys(st2.gam.badges).join(','));
+
+  // Boot the real app again against populated storage, as a browser reload does.
+  goto('#/learn/c3/5');
+  byId('readerAllBtn').onclick();
+  const progressBeforeReload = unchangedLearningData();
+  const savedSettings = JSON.parse(localStorage.getItem('ielts75_v1')).settings;
+  run(window, document, location, localStorage, fetch, confirm, alert, URL, Blob, FileReader, (fn) => fn(), console);
+  await new Promise(r => setImmediate(r));
+  check('tải lại app khôi phục chế độ xem và phần đang đọc',
+    window.__testReader.state.chId === 'c3' && window.__testReader.state.mode === savedSettings.readerMode &&
+    window.__testReader.state.index === savedSettings.readingSections.c3);
+  check('tải lại app giữ nguyên XP, tiến độ, SRS, quiz, huy hiệu và từ vựng',
+    progressBeforeReload === unchangedLearningData());
 
   console.log(fails === 0 ? '\nALL PASS (' + steps + ' quiz steps)' : '\n' + fails + ' FAILED');
   process.exit(fails ? 1 : 0);

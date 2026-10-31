@@ -7,6 +7,8 @@
   const P = window.IELTSParser;
   let DATA = null;          // kết quả parse
   let SEARCH_INDEX = [];    // {chId, chTitle, secTitle, body, secIdx}
+  let readerState = null;
+  let readerObserver = null;
 
   /* ================= utils ================= */
   const $ = sel => document.querySelector(sel);
@@ -393,12 +395,14 @@
   const routes = [];
   function route(re, fn) { routes.push({ re, fn }); }
   function navigate() {
+    if (readerObserver) readerObserver.disconnect();
+    readerState = null;
     const h = location.hash.replace(/^#/, '') || '/';
     for (const r of routes) {
       const m = h.match(r.re);
       if (m) {
         view().classList.remove('wide');
-        r.fn(...m.slice(1)); highlightNav(h); window.scrollTo(0, 0); return;
+        window.scrollTo(0, 0); r.fn(...m.slice(1)); highlightNav(h); return;
       }
     }
     location.hash = '#/';
@@ -408,6 +412,7 @@
     const map = { '': 'home', learn: 'learn', quiz: 'quiz', cards: 'cards', ex: 'ex', awards: 'awards', vocab: 'vocab' };
     document.querySelectorAll('.nav a').forEach(a => {
       a.classList.toggle('active', a.dataset.route === (map[root] || 'home'));
+      a.setAttribute('aria-current', a.dataset.route === (map[root] || 'home') ? 'page' : 'false');
     });
   }
 
@@ -494,6 +499,17 @@
             : `<button class="btn big" id="checkinBtn">📍 Điểm danh hôm nay</button>`}
         </div>
       </div>
+
+      <section class="card home-start" aria-labelledby="startTitle">
+        <div class="eyebrow">HỌC CÓ TRÌNH TỰ</div>
+        <h2 id="startTitle">Hôm nay, bắt đầu từ đâu?</h2>
+        <p>Mỗi buổi tập trung một chủ điểm. Đọc giải thích và ví dụ, tự viết câu rồi kiểm tra lại trước khi đánh dấu đã học.</p>
+        <ol class="start-steps">
+          <li><a href="#/learn/${tc ? tc.id : (store.data.settings.lastChapter || 'c1')}"><strong>Học một bài</strong></a><span>Đi từng phần, có mục tiêu và ví dụ.</span></li>
+          <li><a href="#/quiz"><strong>Ôn điều đã học</strong></a><span>10 câu, ưu tiên kiến thức đến hạn.</span></li>
+          <li><a href="#/learn"><strong>Tra cứu khi cần</strong></a><span>Tìm chủ điểm, công thức hoặc lỗi thường gặp.</span></li>
+        </ol>
+      </section>
 
       <div class="card" style="margin-bottom:16px">
         <h3 style="margin:0 0 12px">🎯 Nhiệm vụ hôm nay — ${msDone}/3${(ci && ci.bonus) ? ' · 🎁 +20 XP bonus' : ''}</h3>
@@ -600,7 +616,7 @@
         </div>
       </div>
 
-      <p class="footer-note">Nguồn: IELTS_Grammar_7_5.md — cập nhật tài liệu chỉ cần thay file và push lại repo.</p>
+      <p class="footer-note">Band trong ứng dụng là cấp độ XP, không phải kết quả thi IELTS. <a href="IELTS_Grammar_7_5.md">Xem tài liệu gốc</a>.</p>
 
       <dialog id="examDlg">
         <h3 style="margin:0 0 10px">🎯 Ngày thi IELTS của bạn</h3>
@@ -693,7 +709,90 @@
   }
 
   /* ================= LEARN ================= */
-  function renderLearn(chId) {
+  function lessonHtml(md) {
+    let html = window.renderMd ? window.renderMd(md) : '<pre>' + esc(md) + '</pre>';
+    html = html.replace(/<p>(⚠️[\s\S]*?)<\/p>/g, '<p class="callout note">$1</p>')
+      .replace(/<p>(🎯[\s\S]*?)<\/p>/g, '<p class="callout tip">$1</p>')
+      .replace(/<blockquote>(\s*<p>✅[\s\S]*?)<\/blockquote>/g, '<blockquote class="callout example"><span class="section-label">Ví dụ</span>$1</blockquote>');
+    // Keep long reference tables available without putting every row on screen.
+    html = html.replace(/<table>[\s\S]*?<\/table>/g, table => {
+      const rows = (table.match(/<tr>/g) || []).length - 1;
+      const wrapped = '<div class="table-scroll" role="region" aria-label="Bảng đối chiếu ngữ pháp" tabindex="0">' + table + '</div>';
+      return rows > 16 ? '<details class="reference-detail"><summary>Bảng tra cứu chi tiết · ' + rows + ' dòng — mở để xem</summary>' + wrapped + '</details>' : wrapped;
+    });
+    return html.replace(/<h2>🔑 ĐÁP ÁN[\s\S]*?<\/h2>([\s\S]*)/, '<details class="reference-detail answer-detail"><summary>Đáp án đối chiếu — mở sau khi tự làm</summary>$1</details>');
+  }
+
+  function buildLessonSections(ch) {
+    const guide = (window.IELTSLessonGuide || {})[ch.id];
+    const chunks = ch.md.split(/^### /m);
+    const prelude = chunks.shift().replace(/^#{1,2} [^\n]*\n?/, '').replace(/^\s*---\s*$/gm, '').trim();
+    const sections = [{
+      id: 'lesson-start', title: guide ? 'Mục tiêu & cách học' : 'Giới thiệu', kind: 'start',
+      html: (guide ? '<div class="lesson-goal"><span class="section-label">Mục tiêu</span><h2>Sau bài này, bạn có thể…</h2><p>' + esc(guide.goal) + '</p><p class="muted small">Đọc giải thích → xem ví dụ → tự luyện → tự kiểm tra. Chuyển phần bằng mục lục hoặc nút bên dưới.</p></div>' : '') + (prelude ? lessonHtml(prelude) : guide ? '' : '<h2>' + (ch.kind === 'intro' ? 'Bắt đầu hành trình học' : 'Cách dùng tài liệu này') + '</h2><p>Chọn một mục trong mục lục để đến đúng nội dung cần tra cứu, hoặc dùng nút “Tiếp” để đọc lần lượt. Chuyển sang “Xem toàn bài” khi muốn đối chiếu nhiều phần.</p><p>Bảng dài và đáp án có nhãn mở/thu gọn. Với bài tập, hãy tự làm trước khi xem đáp án.</p><p><a href="#/learn/c1">Bắt đầu từ chương 1 →</a> · <a href="#/ex">Mở ngân hàng bài tập →</a></p>')
+    }];
+    chunks.forEach((chunk, i) => {
+      const title = chunk.split('\n')[0].trim();
+      const html = lessonHtml('### ' + chunk).replace(/<h3>([\s\S]*?)<\/h3>/, '<h2 id="sec-' + ch.id + '-' + i + '" tabindex="-1">$1</h2>');
+      const label = ch.kind === 'appendix' ? 'Tra cứu & vận dụng' : ch.kind === 'intro' ? 'Hướng dẫn học' : 'Giải thích & ví dụ';
+      sections.push({ id: 'section-' + ch.id + '-' + i, title: title.replace(/[*`]/g, ''), kind: 'theory', html: '<span class="section-label">' + label + '</span>' + html });
+    });
+    if (guide) {
+      const sets = DATA.exercises.filter(set => set.chapterRefs.includes(ch.num));
+      sections.push({ id: ch.id + '-practice', title: 'Tự luyện', kind: 'practice', html: '<div class="lesson-practice"><span class="section-label">Tự luyện</span><h2>Thử dùng kiến thức vừa học</h2><p>' + esc(guide.practice) + '</p><p class="muted">Viết câu trả lời của bạn trước khi xem lại lý thuyết hoặc đáp án.</p><div class="q-actions"><a class="btn" href="#/quiz/practice/' + ch.id + '">Luyện chương này</a>' + sets.map(set => '<a class="btn ghost" href="#/ex/' + set.setId + '">' + esc(set.title) + '</a>').join('') + '</div></div>' });
+      sections.push({ id: ch.id + '-check', title: 'Tiêu chí tự kiểm tra', kind: 'check', html: '<div class="lesson-check"><span class="section-label">Tự kiểm tra</span><h2>Bạn đã nắm được bài chưa?</h2><ul>' + guide.checks.map(check => '<li>' + esc(check) + '</li>').join('') + '</ul><p>Đối chiếu câu bạn vừa viết với ví dụ. Nếu chưa giải thích được lựa chọn của mình, quay lại phần liên quan; khi đã tự kiểm tra, bạn có thể đánh dấu đã học bên dưới.</p><p class="muted small">Đọc hết bài không tự động hoàn thành chương. Mức Band bên thanh điều hướng là cấp độ XP trong ứng dụng.</p></div>' });
+    }
+    return sections;
+  }
+
+  function saveReaderPosition() {
+    const positions = store.data.settings.readingSections || (store.data.settings.readingSections = {});
+    positions[readerState.chId] = readerState.index;
+    store.save();
+    const section = readerState.sections[readerState.index];
+    const part = section.kind === 'theory' ? readerState.index - 1 : section.kind;
+    if (window.history && window.history.replaceState) window.history.replaceState(null, '', '#/learn/' + readerState.chId + '/' + part);
+  }
+
+  function updateReaderUI() {
+    const r = readerState;
+    if (!r) return;
+    document.querySelectorAll('.lesson-section').forEach((el, i) => { el.hidden = r.mode === 'focus' && i !== r.index; });
+    document.querySelectorAll('.section-toc a').forEach((el, i) => {
+      el.setAttribute('aria-current', i === r.index ? 'step' : 'false');
+    });
+    $('#readerFocusBtn').setAttribute('aria-pressed', r.mode === 'focus');
+    $('#readerAllBtn').setAttribute('aria-pressed', r.mode === 'all');
+    const position = 'Phần ' + (r.index + 1) + '/' + r.sections.length + ' · ' + r.sections[r.index].title;
+    $('#readerPosition').textContent = position;
+    $('#readerProgress').value = r.index + 1;
+    $('#readerProgress').setAttribute('aria-label', position);
+    $('#sectionPrevBtn').disabled = r.index === 0;
+    $('#sectionNextBtn').disabled = r.index === r.sections.length - 1;
+    $('#sectionNextBtn').textContent = r.index < r.sections.length - 1 ? 'Tiếp: ' + r.sections[r.index + 1].title + ' →' : 'Đã đến phần cuối';
+    $('#sectionPrevBtn').textContent = r.index ? '← ' + r.sections[r.index - 1].title : '← Phần trước';
+  }
+
+  function showReaderSection(index, scroll) {
+    if (!readerState) return;
+    readerState.index = Math.min(readerState.sections.length - 1, Math.max(0, index));
+    updateReaderUI();
+    saveReaderPosition();
+    if (scroll) {
+      const section = document.getElementById(readerState.sections[readerState.index].id);
+      if (section) { section.scrollIntoView({ behavior: 'auto', block: 'start' }); section.focus({ preventScroll: true }); }
+    }
+  }
+
+  function setReaderMode(mode) {
+    readerState.mode = mode;
+    store.data.settings.readerMode = mode;
+    updateReaderUI();
+    store.save();
+  }
+
+  function renderLearn(chId, sectionArg) {
+    if (readerObserver) readerObserver.disconnect();
     view().classList.add('wide');
     chId = chId || store.data.settings.lastChapter || 'c1';
     let ch = DATA.chapters.find(c => c.id === chId) || DATA.chapters.find(c => c.id === 'c1');
@@ -701,42 +800,85 @@
     store.save();
 
     const learned = new Set(learnedIds());
-    const tocHtml = ['<div class="toc-item' + (ch.id === 'intro' ? ' active' : '') + '" data-ch="intro">📖 Giới thiệu</div>']
+    const sections = buildLessonSections(ch);
+    const savedSection = (store.data.settings.readingSections || {})[ch.id] || 0;
+    const requested = sectionArg === undefined ? savedSection : sectionArg === 'start' ? 0 : sectionArg === 'practice' ? sections.findIndex(s => s.kind === 'practice') : sectionArg === 'check' ? sections.findIndex(s => s.kind === 'check') : Number(sectionArg) + 1;
+    readerState = { chId: ch.id, sections, index: Math.min(sections.length - 1, Math.max(0, requested || 0)), mode: store.data.settings.readerMode === 'all' ? 'all' : 'focus' };
+    const tocHtml = ['<a href="#/learn/intro" class="toc-item' + (ch.id === 'intro' ? ' active' : '') + '"' + (ch.id === 'intro' ? ' aria-current="page"' : '') + '>Giới thiệu & cách học</a>']
       .concat(DATA.toc.map(part => {
         const items = part.chapters.map(c =>
-          `<div class="toc-item ${c.id === ch.id ? 'active' : ''}" data-ch="${c.id}">
+          `<a href="#/learn/${c.id}" class="toc-item ${c.id === ch.id ? 'active' : ''}" ${c.id === ch.id ? 'aria-current="page"' : ''}>
              ${esc(c.title)}${learned.has(c.id) ? '<span class="done">✓</span>' : ''}
-           </div>`).join('');
+           </a>`).join('');
         return `<div class="part">${esc(part.name)}</div>${items}`;
       })).join('');
 
     view().innerHTML = `
       <div class="learn-wrap">
         <div class="card sidebar">
+          <div class="course-heading"><span class="eyebrow">THƯ VIỆN NGỮ PHÁP</span><h2>Học & tra cứu</h2><p class="course-summary">${learned.size}/30 chương đã học · 3 chặng</p></div>
           <div class="searchbox">
-            <input type="search" id="searchInput" placeholder="🔍 Tìm kiếm (vd: đảo ngữ, wish)…" autocomplete="off">
-            <div class="search-results" id="searchResults" style="display:none"></div>
+            <label for="searchInput">Tìm trong toàn bộ tài liệu</label>
+            <input type="search" id="searchInput" placeholder="Ví dụ: đảo ngữ, wish, mạo từ…" autocomplete="off" aria-controls="searchResults" aria-describedby="searchHelp" aria-expanded="false">
+            <span id="searchHelp" class="small muted">Tìm có dấu hoặc không dấu · từ 2 ký tự</span>
+            <div class="search-results" id="searchResults" style="display:none" aria-label="Kết quả tìm kiếm"></div>
           </div>
-          <button class="btn ghost sm toc-toggle" id="tocToggle">☰ Mục lục chương</button>
-          <div class="toc-list" id="tocList">${tocHtml}</div>
+          <button class="btn ghost sm toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="tocList">☰ Chọn chương học</button>
+          <nav class="toc-list" id="tocList" aria-label="Các chương theo trình tự học">${tocHtml}</nav>
         </div>
         <div class="resizer" id="tocResizer" title="Kéo để chỉnh độ rộng mục lục"></div>
         <div class="content">
+          <header class="learn-header">
+            <div class="eyebrow"><a href="#/">Trang chủ</a> / <a href="#/learn/intro">Ngữ pháp</a> / ${ch.kind === 'chapter' ? 'Chương ' + ch.num : 'Tài liệu tham khảo'}</div>
+            <h1>${esc(ch.title)}</h1>
+            <p class="learn-meta">${ch.kind === 'chapter' ? 'Phần ' + ch.part + ' · ' : ''}${Math.max(1, Math.ceil(ch.md.split(/\s+/).length / 180))} phút đọc tham khảo · ${sections.length} phần${learned.has(ch.id) ? ' · ✓ Đã đánh dấu học' : ''}</p>
+          </header>
+          <nav class="card lesson-outline" aria-label="Mục lục trong bài">
+            <details id="sectionOutline"><summary>Mục lục trong bài · chọn phần cần đọc</summary>
+              <ol class="section-toc">${sections.map((s, i) => '<li><a href="#/learn/' + ch.id + '/' + (s.kind === 'theory' ? i - 1 : s.kind === 'start' ? 'start' : s.kind) + '" data-index="' + i + '">' + esc(s.title) + '</a></li>').join('')}</ol>
+            </details>
+          </nav>
+          <div class="reader-toolbar">
+            <div class="reader-modes" role="group" aria-label="Cách đọc bài"><button class="btn ghost sm" id="readerFocusBtn">Đọc từng phần</button><button class="btn ghost sm" id="readerAllBtn">Xem toàn bài</button></div>
+            <div class="reader-position" id="readerPosition" role="status" aria-live="polite"></div>
+            <progress id="readerProgress" max="${sections.length}" value="1"></progress>
+          </div>
           <div class="card">
-            <div class="md" id="mdContent"></div>
+            <div class="md" id="mdContent">${sections.map((s, i) => '<section class="lesson-section" id="' + s.id + '" data-index="' + i + '" tabindex="-1">' + s.html + '</section>').join('')}</div>
+            <nav class="lesson-pager" aria-label="Điều hướng trong bài"><button class="btn ghost" id="sectionPrevBtn">← Phần trước</button><button class="btn" id="sectionNextBtn">Phần tiếp theo →</button></nav>
             <div class="chapter-actions" id="chapterActions"></div>
           </div>
         </div>
       </div>
     `;
 
-    // render markdown
-    const mdEl = $('#mdContent');
-    mdEl.innerHTML = window.renderMd
-      ? window.renderMd(ch.md)
-      : '<pre style="white-space:pre-wrap">' + esc(ch.md) + '</pre>';
-    // gán id cho h3 để search nhảy tới
-    mdEl.querySelectorAll('h3').forEach((h, i) => { h.id = 'sec-' + ch.id + '-' + i; });
+    updateReaderUI();
+    saveReaderPosition();
+    $('#readerFocusBtn').onclick = () => setReaderMode('focus');
+    $('#readerAllBtn').onclick = () => setReaderMode('all');
+    $('#sectionPrevBtn').onclick = () => showReaderSection(readerState.index - 1, true);
+    $('#sectionNextBtn').onclick = () => showReaderSection(readerState.index + 1, true);
+    document.querySelectorAll('.section-toc a').forEach((el, i) => {
+      el.onclick = e => { e.preventDefault(); showReaderSection(i, true); };
+    });
+    // Whole-article reading follows the visible section; this never marks a chapter learned.
+    if (window.IntersectionObserver) {
+      readerObserver = new window.IntersectionObserver(entries => {
+        if (!readerState || readerState.mode !== 'all') return;
+        // Use the content line below the sticky controls. A section that merely
+        // ends at the top of the viewport must not override a newly opened one.
+        if (entries.some(e => e.isIntersecting)) {
+          const toolbar = document.querySelector('.reader-toolbar');
+          const readingLine = toolbar.getBoundingClientRect().bottom + 80;
+          let active = 0;
+          document.querySelectorAll('.lesson-section').forEach((el, i) => {
+            if (el.getBoundingClientRect().top <= readingLine) active = i;
+          });
+          readerState.index = active; updateReaderUI(); saveReaderPosition();
+        }
+      }, { rootMargin: '-15% 0px -55% 0px', threshold: 0 });
+      document.querySelectorAll('.lesson-section').forEach(el => readerObserver.observe(el));
+    }
 
     // actions
     const acts = $('#chapterActions');
@@ -759,14 +901,9 @@
     const ub = $('#unlearnBtn');
     if (ub) ub.onclick = () => { unmarkLearned(ch.id); renderLearn(ch.id); };
 
-    // TOC click
-    document.querySelectorAll('.toc-item').forEach(el => {
-      el.onclick = () => { location.hash = '#/learn/' + el.dataset.ch; };
-    });
-
     // nút mục lục trên mobile
     const tt = $('#tocToggle');
-    if (tt) tt.onclick = () => $('#tocList').classList.toggle('open');
+    if (tt) tt.onclick = () => { const open = $('#tocList').classList.toggle('open'); tt.setAttribute('aria-expanded', !!open); };
 
     // kéo chỉnh độ rộng mục lục (lưu lại cho lần sau)
     const wrap = document.querySelector('.learn-wrap');
@@ -793,6 +930,7 @@
     };
 
     setupSearch();
+    if (sectionArg !== undefined) showReaderSection(readerState.index, true);
   }
 
   function shortTitle(c) {
@@ -816,48 +954,55 @@
     });
   }
 
+  function searchText(value) {
+    return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+  }
+
   function setupSearch() {
     const input = $('#searchInput');
     const box = $('#searchResults');
     if (!input) return;
     input.oninput = () => {
-      const q = input.value.trim().toLowerCase();
-      if (q.length < 2) { box.style.display = 'none'; return; }
+      const q = searchText(input.value.trim());
+      if (q.length < 2) { box.style.display = 'none'; input.setAttribute('aria-expanded', 'false'); return; }
       const hits = [];
       for (const s of SEARCH_INDEX) {
-        const inTitle = s.secTitle.toLowerCase().includes(q);
-        const inBody = s.body.includes(q);
+        const inTitle = searchText(s.secTitle).includes(q);
+        const inBody = searchText(s.body).includes(q);
         if (inTitle || inBody) hits.push({ s, score: inTitle ? 0 : 1 });
-        if (hits.length > 40) break;
       }
       hits.sort((a, b) => a.score - b.score);
       const top = hits.slice(0, 12);
-      if (!top.length) { box.innerHTML = '<div class="res"><span>Không tìm thấy…</span></div>'; box.style.display = 'block'; return; }
-      box.innerHTML = top.map((h, i) =>
-        `<div class="res" data-i="${i}"><b>${esc(h.s.secTitle)}</b><span>${esc(h.s.chTitle)}</span></div>`).join('');
+      if (!top.length) { box.innerHTML = '<p class="search-empty" role="status">Chưa có kết quả. Thử tên chủ điểm ngắn hơn, ví dụ “wish” hoặc “mao tu”.</p>'; box.style.display = 'block'; input.setAttribute('aria-expanded', 'true'); return; }
+      box.innerHTML = '<p class="search-count" role="status">' + hits.length + ' kết quả' + (hits.length > 12 ? ' · hiển thị 12 kết quả phù hợp nhất' : '') + '</p>' + top.map((h, i) =>
+        `<button type="button" class="res" data-i="${i}"><span class="search-result-type">${h.s.secIdx < 0 ? 'Tổng quan' : 'Trong bài'} · ${esc(h.s.chTitle)}</span><b>${esc(h.s.secTitle)}</b></button>`).join('');
       box.style.display = 'block';
+      input.setAttribute('aria-expanded', 'true');
       box.querySelectorAll('.res').forEach((el, i) => {
         el.onclick = () => {
           const hit = top[i].s;
           box.style.display = 'none';
           input.value = '';
+          input.setAttribute('aria-expanded', 'false');
           gotoSection(hit.chId, hit.secIdx);
+        };
+        el.onkeydown = e => {
+          const results = box.querySelectorAll('.res');
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); results[(i + (e.key === 'ArrowDown' ? 1 : results.length - 1)) % results.length].focus(); }
+          if (e.key === 'Escape') { box.style.display = 'none'; input.setAttribute('aria-expanded', 'false'); input.focus(); }
         };
       });
     };
-    input.onblur = () => setTimeout(() => { box.style.display = 'none'; }, 250);
+    input.onkeydown = e => {
+      const results = box.querySelectorAll('.res');
+      if ((e.key === 'ArrowDown' || e.key === 'Enter') && box.style.display !== 'none' && results.length) { e.preventDefault(); if (e.key === 'Enter') results[0].click(); else results[0].focus(); }
+      if (e.key === 'Escape') { box.style.display = 'none'; input.setAttribute('aria-expanded', 'false'); }
+    };
   }
 
   function gotoSection(chId, secIdx) {
-    const cur = store.data.settings.lastChapter;
-    const scroll = () => {
-      if (secIdx >= 0) {
-        const h = document.getElementById('sec-' + chId + '-' + secIdx);
-        if (h) { h.scrollIntoView({ behavior: 'smooth', block: 'start' }); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 1700); }
-      }
-    };
-    if (cur === chId && location.hash.startsWith('#/learn')) { scroll(); }
-    else { location.hash = '#/learn/' + chId; setTimeout(scroll, 350); }
+    if (readerState && readerState.chId === chId) showReaderSection(secIdx + 1, true);
+    else location.hash = '#/learn/' + chId + '/' + (secIdx < 0 ? 'start' : secIdx);
   }
 
   /* ================= QUIZ ================= */
@@ -1385,6 +1530,8 @@
   function boot() {
     store.load();
     applyTheme();
+    const skip = document.querySelector('.skip-link');
+    if (skip) skip.onclick = e => { e.preventDefault(); view().focus(); view().scrollIntoView({ block: 'start' }); };
     $('#themeBtn').onclick = () => {
       store.data.settings.theme = store.data.settings.theme === 'light' ? 'dark' : 'light';
       store.save();
@@ -1398,6 +1545,7 @@
         buildSearchIndex();
 
         route(/^\/$/, renderHome);
+        route(/^\/learn\/([\w-]+)\/(start|practice|check|\d+)$/, renderLearn);
         route(/^\/learn\/([\w-]+)$/, renderLearn);
         route(/^\/learn$/, () => renderLearn());
         route(/^\/quiz$/, renderQuizLanding);

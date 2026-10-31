@@ -1,22 +1,47 @@
 # NGỮ PHÁP TIẾNG ANH TOÀN DIỆN — MỤC TIÊU IELTS 7.5
 ### Comprehensive English Grammar for IELTS 7.5
 
-> **Cách dùng tài liệu này / How to use this document**
+**Bắt đầu từ đâu?**
+
+Nếu cần xây lại nền tảng, bắt đầu ở **chương 1**, rồi học Phần I trước. Nếu đã có kiến thức cơ bản, dùng mục lục hoặc tìm kiếm để đến đúng chủ điểm đang vướng. Phụ lục B có lộ trình ôn theo giai đoạn.
+
+Tài liệu tập trung vào ngữ pháp, với **7.5 là mục tiêu học tập**. Việc hoàn thành tài liệu không tự xác nhận band IELTS; bạn còn cần luyện và đánh giá cả bốn kỹ năng.
+
+**Bản đồ nội dung / Content map**
+
+| Phần | Bạn sẽ học gì? | Khi nào nên dùng? |
+|---|---|---|
+| I · Chương 1–10 | Thành phần câu, danh từ, mạo từ, thì và các cấu trúc cốt lõi | Học trước để xây nền; quay lại khi lỗi cơ bản lặp lại |
+| II · Chương 11–21 | Các cấu trúc bổ sung, dấu câu, lỗi thường gặp và ứng dụng bốn kỹ năng | Sau khi đã nắm nền tảng, cần diễn đạt linh hoạt hơn |
+| III · Chương 22–30 | Giả định, wish, cặp từ dễ nhầm, song song hóa, phối hợp thì và tạo từ | Đào sâu từng chủ điểm và xử lý sắc thái, ngoại lệ |
+| Phụ lục A–C | Động từ bất quy tắc, lộ trình ôn, checklist tự rà lỗi | Tra cứu nhanh trong khi viết hoặc sửa bài |
+| Phụ lục D & F | 12 bộ bài tập nền tảng và 3 dạng luyện nâng cao, có đáp án | Tự làm trước, đối chiếu sau và ghi lại lỗi cần ôn |
+| Phụ lục E | Cụm từ học thuật theo chức năng | Chọn cách diễn đạt phù hợp với ý và ngữ cảnh |
+
+**Một lượt học nên làm gì?**
+
+1. **Xác định mục tiêu:** đọc mục tiêu chương và chọn một tiểu mục cần học.
+2. **Hiểu quy tắc:** đọc giải thích, đối chiếu bảng và công thức khi có.
+3. **Đọc ví dụ:** so câu đúng/sai và tự giải thích chỗ khác nhau.
+4. **Tự luyện:** viết câu của riêng mình hoặc làm bộ bài tập liên quan trước khi mở đáp án.
+5. **Tự kiểm tra:** rà theo tiêu chí cuối bài; quay lại phần chưa chắc rồi mới đánh dấu đã học.
+
+**Ký hiệu / Symbols**
+
+| Ký hiệu | Ý nghĩa |
+|---|---|
+| 🇻🇳 | Giải thích tiếng Việt |
+| ✅ / ❌ | Ví dụ đúng / sai hoặc cách dùng cần đối chiếu |
+| ⚠️ | Lưu ý, ngoại lệ hoặc lỗi thường gặp |
+| 🎯 | Gợi ý vận dụng vào IELTS |
+
+> **⚠️ Nhất quán Anh-Anh (BrE) và Anh-Mỹ (AmE)**
 >
-> Tài liệu chia làm **3 phần lớn + phụ lục bài tập**:
-> - **PHẦN I — NGỮ PHÁP CỐT LÕI (Core Grammar):** Đây là phần *cô đọng*, chứa 80% kiến thức bạn thực sự cần để đạt 7.5. Học kỹ phần này trước. Mỗi mục có giải thích, công thức, ví dụ, và **lỗi người Việt hay mắc**.
-> - **PHẦN II — NGỮ PHÁP BỔ SUNG & NÂNG CAO (Extended Grammar):** Đào sâu các sắc thái, ngoại lệ, và cấu trúc nâng cao giúp bạn vượt 7.0 lên 7.5–8.0, đặc biệt ở tiêu chí **Grammatical Range and Accuracy** trong Writing và Speaking.
-> - **PHẦN III — NGỮ PHÁP NÂNG CAO CHUYÊN SÂU (Deep Dive):** Bổ sung những điểm còn thiếu để "toàn diện": thức giả định, wish/if only, các cặp từ dễ nhầm (used to / be used to...), song song hóa, phối hợp thì khi kể chuyện, tạo từ, và nhiều điểm tinh tế khác.
-> - **PHỤ LỤC D — NGÂN HÀNG BÀI TẬP (có đáp án):** 12 bộ bài tập bao quát các chủ điểm chính, kèm đáp án và giải thích. Đây là phần biến lý thuyết thành phản xạ — **làm bài tập quan trọng không kém học lý thuyết**.
+> IELTS chấp nhận cả Anh-Anh và Anh-Mỹ. Khi viết, chú ý sự nhất quán trong chính tả và cách dùng. Các khác biệt được nhắc tới trong tài liệu cần được đọc theo đúng ngữ cảnh.
 >
-> **Ký hiệu / Symbols:**
-> - ✅ = đúng / correct
-> - ❌ = sai / incorrect
-> - 🇻🇳 = giải thích tiếng Việt / Vietnamese explanation
-> - ⚠️ = lỗi người Việt thường mắc / common Vietnamese-learner error
-> - 🎯 = mẹo dùng cho IELTS / IELTS tip
+> Ví dụ: *in hospital* (BrE) và *in the hospital* (AmE); danh từ tập hợp có thể được dùng với động từ số nhiều trong BrE hoặc số ít trong AmE. Tài liệu cũng nhắc tới các dạng chính tả như *-ise/-our* và *-ize/-or* để bạn nhận diện khi đọc.
 >
-> **⚠️ Lưu ý về Anh-Anh (BrE) và Anh-Mỹ (AmE):** IELTS chấp nhận CẢ HAI, nhưng phải dùng **nhất quán** trong một bài. Đừng trộn lẫn (ví dụ vừa viết *the team **are**... in **the** hospital* kiểu lai tạp trông thiếu cẩn thận). Một số khác biệt tài liệu sẽ chỉ ra: *in hospital* (BrE) vs *in the hospital* (AmE); *at university* (BrE) vs *at the university* (AmE); danh từ tập hợp số nhiều (BrE) vs số ít (AmE); chính tả *-ise/-our* (BrE) vs *-ize/-or* (AmE). Hãy chọn một kiểu và giữ nguyên.
+> Với *at university* và *at the university*, hãy kiểm tra cả ý nghĩa: đang nói tới việc học đại học hay một trường/địa điểm cụ thể. Không nên chỉ dựa vào việc có *the* để kết luận cách dùng sai.
 
 ---
 
@@ -93,7 +118,9 @@ A complete sentence needs:
 - ❌ *I very tired.*
 - ✅ *I **am** very tired.*
 
-🇻🇳 Lý do: trong tiếng Việt "Cô ấy đẹp" không cần từ "thì/là", nhưng tiếng Anh mọi câu phải có động từ. Nếu không có động từ hành động, ta phải dùng động từ "to be" (am/is/are/was/were).
+🇻🇳 Lý do: trong tiếng Việt "Cô ấy đẹp" không cần từ "thì/là", nhưng tiếng Anh mọi câu phải có động từ.
+
+Nếu không có động từ hành động, ta phải dùng động từ "to be" (am/is/are/was/were).
 
 ### 1.2. Tám loại từ / The eight parts of speech
 
@@ -152,7 +179,9 @@ A complete sentence needs:
 | *knowledges* | *knowledge* |
 | *a homework* | *homework* / *an assignment* |
 
-🇻🇳 Lý do người Việt hay sai: trong tiếng Việt mọi danh từ đều "đếm được" như nhau ("một thông tin", "nhiều lời khuyên"), nên ta vô thức thêm "s". Hãy ghi nhớ danh sách trên — chúng xuất hiện RẤT nhiều trong IELTS Writing.
+🇻🇳 Lý do người Việt hay sai: trong tiếng Việt mọi danh từ đều "đếm được" như nhau ("một thông tin", "nhiều lời khuyên"), nên ta vô thức thêm "s".
+
+Hãy ghi nhớ danh sách trên — chúng xuất hiện RẤT nhiều trong IELTS Writing.
 
 ### 2.2. Mạo từ a / an / the — Quy tắc cốt lõi
 
@@ -948,7 +977,11 @@ A complete sentence needs:
 - ✅ *a **lovely little** house* (opinion + size)
 - ❌ *a wooden beautiful table* → ✅ *a beautiful wooden table*
 
-🇻🇳 **Lưu ý quan trọng:** đây là *hướng dẫn*, không phải luật cứng tuyệt đối. Hai mốc CỐ ĐỊNH cần nhớ là: **opinion luôn đứng đầu tiên**, và **material/purpose luôn đứng sát danh từ nhất**. Các loại "dữ kiện" ở giữa (size, shape, age) đôi khi linh hoạt và bản thân các nguồn cũng không hoàn toàn thống nhất. Người bản xứ cảm nhận thứ tự này tự nhiên; người Việt cần luyện. Thực tế thường chỉ gặp 2–3 tính từ, nên nhớ "opinion trước, rồi đến size/age/colour" là đủ dùng.
+🇻🇳 **Lưu ý quan trọng:** đây là *hướng dẫn*, không phải luật cứng tuyệt đối. Hai mốc CỐ ĐỊNH cần nhớ là: **opinion luôn đứng đầu tiên**, và **material/purpose luôn đứng sát danh từ nhất**.
+
+Các loại "dữ kiện" ở giữa (size, shape, age) đôi khi linh hoạt và bản thân các nguồn cũng không hoàn toàn thống nhất. Người bản xứ cảm nhận thứ tự này tự nhiên; người Việt cần luyện.
+
+Thực tế thường chỉ gặp 2–3 tính từ, nên nhớ "opinion trước, rồi đến size/age/colour" là đủ dùng.
 
 ### 17.2. Tính từ vs Trạng từ
 
@@ -1148,7 +1181,9 @@ A complete sentence needs:
 
 > **⭐ Điểm tinh tế quan trọng — *insist / suggest / recommend* có HAI nghĩa:**
 >
-> 🇻🇳 Các động từ *insist, suggest, recommend* vừa có thể mang nghĩa **đòi hỏi/đề nghị** (→ dùng giả định, base form), vừa có thể mang nghĩa **khẳng định/ngụ ý một sự thật** (→ dùng thì bình thường). Nghĩa thay đổi hẳn tùy bạn chọn dạng nào:
+> 🇻🇳 Các động từ *insist, suggest, recommend* vừa có thể mang nghĩa **đòi hỏi/đề nghị** (→ dùng giả định, base form), vừa có thể mang nghĩa **khẳng định/ngụ ý một sự thật** (→ dùng thì bình thường).
+>
+> **Đối chiếu hai ý nghĩa qua ví dụ:**
 > - *She insisted that he **be** present.* = Cô ấy **yêu cầu** anh ta phải có mặt. *(giả định — mong muốn)*
 > - *She insisted that he **was** present.* = Cô ấy **khẳng định** rằng anh ta đã có mặt. *(trần thuật — quả quyết một sự thật)*
 > - *He suggested that she **leave** early.* = Anh ấy **đề nghị** cô ấy về sớm. *(giả định)*
@@ -1156,7 +1191,9 @@ A complete sentence needs:
 >
 > 🇻🇳 **Quy tắc phân biệt:** nếu câu mang ý "muốn ai đó làm gì" → dùng base form (giả định). Nếu câu mang ý "cho rằng / khẳng định điều gì là thật" → dùng thì bình thường.
 >
-> ⚠️ **Lưu ý ngược lại:** các động từ chỉ **ý kiến/niềm tin/hy vọng** (*think, believe, hope, wish, say*) KHÔNG dùng **giả định hiện tại (base form)** trong mệnh đề *that*: ✅ *I hope that he **is** well* (KHÔNG *be well*). Riêng *wish* có cấu trúc **lùi thì** riêng của nó (*I wish she **were** here* — past subjunctive, xem mục 22.2 và 23), đừng nhầm với dạng base form ở mục này.
+> ⚠️ **Lưu ý ngược lại:** các động từ chỉ **ý kiến/niềm tin/hy vọng** (*think, believe, hope, wish, say*) KHÔNG dùng **giả định hiện tại (base form)** trong mệnh đề *that*: ✅ *I hope that he **is** well* (KHÔNG *be well*).
+>
+> Riêng *wish* có cấu trúc **lùi thì** riêng của nó (*I wish she **were** here* — past subjunctive, xem mục 22.2 và 23), đừng nhầm với dạng base form ở mục này.
 
 ### 22.2. Past Subjunctive — "were" cho mọi ngôi
 
@@ -1341,7 +1378,9 @@ Khi liệt kê hoặc nối bằng *and/or/but*, các phần phải đồng dạ
 
 ## 27. Phối hợp thì trong văn kể (Tense management) 🎯
 
-🇻🇳 Khi kể chuyện hoặc thuật lại (Speaking Part 2, Writing kể trải nghiệm), bạn phải phối hợp nhiều thì nhất quán. Đây là kỹ năng band cao.
+🇻🇳 Khi kể chuyện hoặc thuật lại (Speaking Part 2, Writing kể trải nghiệm), bạn phải phối hợp nhiều thì nhất quán.
+
+Hãy xác định **mạch kể**, **bối cảnh** và **sự việc xảy ra trước** trước khi chọn thì cho từng câu.
 
 ### Khung thì khi kể chuyện quá khứ
 - **Past Simple** = mạch chính của câu chuyện: *I **woke** up, **got** dressed, and **left**.*
@@ -1389,7 +1428,9 @@ Khi liệt kê hoặc nối bằng *and/or/but*, các phần phải đồng dạ
 
 ## 29. Word Formation — Tạo từ (tiền tố & hậu tố) 🎯
 
-🇻🇳 Ranh giới giữa từ vựng và ngữ pháp. Hiểu cách tạo từ giúp bạn (1) chọn đúng dạng từ trong câu, (2) đoán nghĩa từ mới, (3) làm tốt dạng bài word-form trong Reading/Listening.
+🇻🇳 Ranh giới giữa từ vựng và ngữ pháp. Hiểu cách tạo từ giúp bạn chọn đúng dạng từ trong câu và đoán nghĩa từ mới.
+
+Khi đọc hoặc nghe, xác định từ đang đóng vai trò **danh từ, động từ, tính từ hay trạng từ**, rồi kiểm tra lại nghĩa trong ngữ cảnh.
 
 ### 29.1. Hậu tố tạo DANH TỪ
 - *-tion/-sion:* educate → educa**tion**, decide → deci**sion**
