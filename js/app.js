@@ -757,6 +757,7 @@
   function updateReaderUI() {
     const r = readerState;
     if (!r) return;
+    document.querySelector('.learn-wrap').setAttribute('data-reader-mode', r.mode);
     document.querySelectorAll('.lesson-section').forEach((el, i) => { el.hidden = r.mode === 'focus' && i !== r.index; });
     document.querySelectorAll('.section-toc a').forEach((el, i) => {
       el.setAttribute('aria-current', i === r.index ? 'step' : 'false');
@@ -780,7 +781,13 @@
     saveReaderPosition();
     if (scroll) {
       const section = document.getElementById(readerState.sections[readerState.index].id);
-      if (section) { section.scrollIntoView({ behavior: 'auto', block: 'start' }); section.focus({ preventScroll: true }); }
+      if (section) {
+        const target = readerState.mode === 'focus' ? document.querySelector('.learn-header') : section;
+        const outline = $('#sectionOutline');
+        if (readerState.mode === 'focus' && outline) outline.open = false;
+        target.scrollIntoView({ behavior: 'auto', block: 'start' });
+        section.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -907,14 +914,18 @@
 
     // kéo chỉnh độ rộng mục lục (lưu lại cho lần sau)
     const wrap = document.querySelector('.learn-wrap');
-    if (wrap && wrap.style.setProperty) wrap.style.setProperty('--toc-w', (store.data.settings.tocWidth || 320) + 'px');
+    const savedTocWidth = Number(store.data.settings.tocWidth);
+    if (wrap && wrap.style.setProperty && Number.isFinite(savedTocWidth) && savedTocWidth > 0) {
+      wrap.style.setProperty('--toc-w', Math.min(560, Math.max(200, savedTocWidth)) + 'px');
+    }
     const rz = $('#tocResizer');
     if (rz) rz.onmousedown = e => {
       e.preventDefault();
       rz.classList.add('dragging');
       document.body.classList.add('resizing');
       const move = ev => {
-        const w = Math.min(560, Math.max(200, ev.clientX - wrap.getBoundingClientRect().left));
+        const bounds = wrap.getBoundingClientRect();
+        const w = Math.min(560, Math.max(200, bounds.width * .28), Math.max(200, ev.clientX - bounds.left));
         wrap.style.setProperty('--toc-w', w + 'px');
         store.data.settings.tocWidth = w;
       };

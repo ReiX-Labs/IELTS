@@ -18,19 +18,29 @@ const cacheBySel = new Map();  // era:sel -> [stubs]
 
 function makeStub(extra, isView) {
   const attributes = {};
+  const styleProperties = {};
   const classes = new Set();
   const el = {
     _inner: '',
-    style: { setProperty() {} }, dataset: {},
+    style: {
+      setProperty(name, value) { styleProperties[name] = String(value); },
+      getPropertyValue(name) { return styleProperties[name] || ''; }
+    }, dataset: {},
     classList: {
       toggle(name, force) { const on = force === undefined ? !classes.has(name) : force; if (on) classes.add(name); else classes.delete(name); return on; },
       add(...names) { names.forEach(name => classes.add(name)); },
       remove(...names) { names.forEach(name => classes.delete(name)); },
       contains(name) { return classes.has(name); }
     },
-    setAttribute(name, value) { attributes[name] = String(value); },
+    setAttribute(name, value) {
+      attributes[name] = String(value);
+      if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = String(value);
+    },
     getAttribute(name) { return attributes[name] === undefined ? null : attributes[name]; },
-    removeAttribute(name) { delete attributes[name]; },
+    removeAttribute(name) {
+      delete attributes[name];
+      if (name.startsWith('data-')) delete this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())];
+    },
     onclick: null, oninput: null, onblur: null, onkeydown: null, onchange: null,
     disabled: false, hidden: false, value: '', textContent: '', scrollLeft: 0, scrollWidth: 0,
     focus() { this._focused = true; }, click() { if (this.onclick) this.onclick({ preventDefault() {} }); }, scrollIntoView() { this._scrolled = true; }, remove() {}, appendChild() {},
@@ -149,6 +159,23 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('learn có nút luyện chương', htmlLog.includes('Luyện chương này'));
   check('learn có thanh kéo cột', htmlLog.includes('tocResizer'));
   const reader = window.__testReader;
+  check('chưa chọn độ rộng mục lục thì giữ mặc định responsive của CSS',
+    document.querySelector('.learn-wrap').style.getPropertyValue('--toc-w') === '' &&
+    !Object.prototype.hasOwnProperty.call(reader.store.data.settings, 'tocWidth'));
+  reader.store.data.settings.tocWidth = 560;
+  reader.store.save();
+  goto('#/learn/c3');
+  check('tôn trọng độ rộng 560px đã lưu mà không ghi đè tùy chọn',
+    document.querySelector('.learn-wrap').style.getPropertyValue('--toc-w') === '560px' &&
+    JSON.parse(localStorage.getItem('ielts75_v1')).settings.tocWidth === 560);
+  reader.store.data.settings.tocWidth = 'invalid-width';
+  reader.store.save();
+  goto('#/learn/c3');
+  check('độ rộng đã lưu không hợp lệ dùng mặc định responsive',
+    document.querySelector('.learn-wrap').style.getPropertyValue('--toc-w') === '');
+  delete reader.store.data.settings.tocWidth;
+  reader.store.save();
+  goto('#/learn/c3');
   const unchangedLearningData = () => {
     const saved = JSON.parse(localStorage.getItem('ielts75_v1'));
     delete saved.settings;
@@ -165,18 +192,25 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
     originalSections.every((heading, index) => htmlLog.includes(`id="sec-c3-${index}"`)));
   check('đọc từng phần mặc định chỉ hiện 1 phần',
     document.querySelectorAll('.lesson-section').filter(el => !el.hidden).length === 1 && byId('sectionPrevBtn').disabled);
+  check('container phản ánh chế độ đọc từng phần', document.querySelector('.learn-wrap').dataset.readerMode === 'focus');
+  byId('sectionOutline').open = true;
   byId('sectionNextBtn').onclick();
   check('nút tiếp chuyển phần, lưu vị trí và cập nhật phần đang đọc',
     reader.state.index === 1 && byId('readerPosition').textContent.startsWith('Phần 2/') &&
     JSON.parse(localStorage.getItem('ielts75_v1')).settings.readingSections.c3 === 1);
+  check('chuyển phần cuộn về đầu bài, thu mục lục và giữ focus trong phần đọc',
+    document.querySelector('.learn-header')._scrolled === true && byId('sectionOutline').open === false &&
+    byId(reader.state.sections[1].id)._focused === true);
   check('mục lục xác định đúng phần đang đọc',
     document.querySelectorAll('.section-toc a')[1].getAttribute('aria-current') === 'step');
   byId('readerAllBtn').onclick();
   check('xem toàn bài hiện tất cả các phần',
     document.querySelectorAll('.lesson-section').every(el => !el.hidden) && byId('readerAllBtn').getAttribute('aria-pressed') === 'true');
+  check('container cập nhật chế độ xem toàn bài', document.querySelector('.learn-wrap').dataset.readerMode === 'all');
   byId('readerFocusBtn').onclick();
   check('chuyển lại đọc từng phần giữ đúng vị trí',
     reader.state.index === 1 && document.querySelectorAll('.lesson-section').filter(el => !el.hidden).length === 1);
+  check('container khôi phục chế độ đọc từng phần', document.querySelector('.learn-wrap').dataset.readerMode === 'focus');
   goto('#/learn/c3/5');
   check('link mục cụ thể mở đúng phần dù đang đọc từng phần',
     reader.state.chId === 'c3' && reader.state.index === 6 && !document.querySelectorAll('.lesson-section')[6].hidden);

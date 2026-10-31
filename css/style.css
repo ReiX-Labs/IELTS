@@ -159,10 +159,14 @@ h1.page-title { font-size: 26px; margin: 4px 0 18px; }
 .tools-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
 /* ---------- Learn ---------- */
-.view.wide { max-width: 1480px; padding: 28px 28px 64px; }
+.view.wide {
+  width: 100%; max-width: none;
+  padding: 28px clamp(20px, 2vw, 48px) 64px;
+  --lesson-font: clamp(1rem, calc(.625rem + .5vw), 1.375rem);
+}
 .learn-wrap {
   display: grid;
-  grid-template-columns: minmax(200px, var(--toc-w, 280px)) 6px minmax(0, 1fr);
+  grid-template-columns: minmax(200px, min(var(--toc-w, clamp(260px, 18vw, 400px)), 28%)) 6px minmax(0, 1fr);
   gap: 0 16px; align-items: start;
 }
 /* thanh kéo chỉnh độ rộng mục lục */
@@ -191,10 +195,6 @@ body.resizing { cursor: col-resize; user-select: none; }
   .toc-list.open { display: block; }
 }
 .content .card { padding: 28px 34px; }
-@media (min-width: 1500px) {
-  .content .card { padding: 32px 40px; }
-  .view.wide .md p, .view.wide .md li, .view.wide .md table { font-size: 16px; }
-}
 .sidebar .part { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 14px 0 6px; }
 .sidebar .part:first-child { margin-top: 0; }
 .toc-item {
@@ -493,17 +493,20 @@ html[data-theme="light"] .btn.green { color: #fff; }
 .start-steps span, .start-steps p { color: var(--muted); font-size: 13px; margin: 0; }
 
 /* Content keeps its natural form: prose, comparisons, examples and practice. */
-.md { max-width: 80ch; margin-inline: auto; }
-.md h2 { font-size: 23px; line-height: 1.4; margin-top: 30px; }
+.md { width: 100%; max-width: none; margin-inline: 0; font-size: var(--lesson-font, 1rem); }
+.md p, .md li { font-size: 1em; max-width: 92ch; }
+.md blockquote { max-width: 92ch; }
+.md h2 { font-size: clamp(23px, 1.3vw, 32px); line-height: 1.4; margin-top: 24px; }
 .md h3 { font-size: 20px; line-height: 1.5; margin: 16px 0 20px; border: 0; padding: 0; color: var(--text); letter-spacing: -.01em; }
 .md h4 { font-size: 17px; margin: 24px 0 10px; }
 .md p { margin: 14px 0; }
 .md ul, .md ol { padding-left: 26px; margin: 12px 0 18px; }
 .md li + li { margin-top: 7px; }
-.md table { max-width: 100%; margin: 20px 0; scrollbar-width: thin; overscroll-behavior-x: contain; }
+.learn-wrap[data-reader-mode="focus"] .lesson-section { border-top: 0; margin-top: 0; padding-top: 0; }
+.md table { max-width: 100%; margin: 20px 0; font-size: inherit; scrollbar-width: thin; overscroll-behavior-x: contain; }
 .table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .md .table-scroll table { display: table; min-width: 100%; margin: 12px 0; }
-.md th, .md td { min-width: 100px; padding: 11px 14px; font-size: 14px; line-height: 1.65; vertical-align: top; }
+.md th, .md td { min-width: 100px; padding: 11px 14px; font-size: .9em; line-height: 1.65; vertical-align: top; }
 .md th { font-weight: 650; color: var(--text); }
 .md pre, pre { max-width: 100%; overflow-x: auto; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); font-size: 14px; line-height: 1.7; }
 .md pre code { background: none; padding: 0; white-space: pre; overflow-wrap: normal; }
@@ -536,6 +539,17 @@ html[data-theme="dark"] .reix-credit .rx-color { display: none; }
 html[data-theme="dark"] .reix-credit .rx-white { display: block; }
 
 /* ---------- Responsive layouts ---------- */
+@media (min-width: 1800px) {
+  .content .card { padding: 32px 40px; }
+  .content .lesson-outline { padding: 16px 24px; }
+  .learn-header h1 { font-size: 40px; }
+  .toc-item, .searchbox input { font-size: 17px; }
+  .sidebar .part, .searchbox label { font-size: 15px; }
+  .course-heading h2 { font-size: 21px; }
+  .course-summary, .searchbox .small, .learn-meta, .reader-position { font-size: 16px; }
+  .nav a, .reader-modes button, .chapter-actions .btn, .lesson-pager .btn { font-size: 16px; }
+  .section-label { font-size: 13px; }
+}
 @media (max-width: 1180px) {
   .topbar { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; padding: 10px 20px 8px; }
   .topbar-right { justify-self: end; grid-column: 2; grid-row: 1; }
