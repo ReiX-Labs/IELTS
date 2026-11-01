@@ -9,6 +9,7 @@
   let SEARCH_INDEX = [];    // {chId, chTitle, secTitle, body, secIdx}
   let readerState = null;
   let readerObserver = null;
+  let readerLayoutCleanup = null;
 
   /* ================= utils ================= */
   const $ = sel => document.querySelector(sel);
@@ -396,6 +397,7 @@
   function route(re, fn) { routes.push({ re, fn }); }
   function navigate() {
     if (readerObserver) readerObserver.disconnect();
+    if (readerLayoutCleanup) { readerLayoutCleanup(); readerLayoutCleanup = null; }
     readerState = null;
     const h = location.hash.replace(/^#/, '') || '/';
     for (const r of routes) {
@@ -414,6 +416,8 @@
       a.classList.toggle('active', a.dataset.route === (map[root] || 'home'));
       a.setAttribute('aria-current', a.dataset.route === (map[root] || 'home') ? 'page' : 'false');
     });
+    const nav = $('#nav'), toggle = $('#navToggle');
+    if (nav && toggle) { nav.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); }
   }
 
   function refreshStreakPill() {
@@ -766,12 +770,23 @@
     $('#readerAllBtn').setAttribute('aria-pressed', r.mode === 'all');
     const position = 'Phần ' + (r.index + 1) + '/' + r.sections.length + ' · ' + r.sections[r.index].title;
     $('#readerPosition').textContent = position;
+    $('#readerPosition').setAttribute('title', position);
+    $('#outlineCount').textContent = (r.index + 1) + '/' + r.sections.length;
     $('#readerProgress').value = r.index + 1;
     $('#readerProgress').setAttribute('aria-label', position);
     $('#sectionPrevBtn').disabled = r.index === 0;
     $('#sectionNextBtn').disabled = r.index === r.sections.length - 1;
     $('#sectionNextBtn').textContent = r.index < r.sections.length - 1 ? 'Tiếp: ' + r.sections[r.index + 1].title + ' →' : 'Đã đến phần cuối';
     $('#sectionPrevBtn').textContent = r.index ? '← ' + r.sections[r.index - 1].title : '← Phần trước';
+  }
+
+  function readerTopOffset() {
+    const header = document.querySelector('.topbar');
+    const tools = document.querySelector('.reader-tools');
+    const position = window.getComputedStyle(header).position;
+    const headerHeight = position === 'sticky' || position === 'fixed' ? header.getBoundingClientRect().height : 0;
+    const wide = window.matchMedia('(min-width: 88rem)').matches;
+    return headerHeight + (wide ? 0 : tools.getBoundingClientRect().height) + 24;
   }
 
   function showReaderSection(index, scroll) {
@@ -784,8 +799,11 @@
       if (section) {
         const target = readerState.mode === 'focus' ? document.querySelector('.learn-header') : section;
         const outline = $('#sectionOutline');
-        if (readerState.mode === 'focus' && outline) outline.open = false;
-        target.scrollIntoView({ behavior: 'auto', block: 'start' });
+        const wide = window.matchMedia && window.matchMedia('(min-width: 88rem)').matches;
+        if (readerState.mode === 'focus' && outline && !wide) outline.open = false;
+        if (readerState.mode === 'all' && window.getComputedStyle && section.getBoundingClientRect) {
+          window.scrollTo({ top: Math.max(0, window.scrollY + section.getBoundingClientRect().top - readerTopOffset()), behavior: 'auto' });
+        } else target.scrollIntoView({ behavior: 'auto', block: 'start' });
         section.focus({ preventScroll: true });
       }
     }
@@ -794,12 +812,12 @@
   function setReaderMode(mode) {
     readerState.mode = mode;
     store.data.settings.readerMode = mode;
-    updateReaderUI();
-    store.save();
+    showReaderSection(readerState.index, true);
   }
 
   function renderLearn(chId, sectionArg) {
     if (readerObserver) readerObserver.disconnect();
+    if (readerLayoutCleanup) { readerLayoutCleanup(); readerLayoutCleanup = null; }
     view().classList.add('wide');
     chId = chId || store.data.settings.lastChapter || 'c1';
     let ch = DATA.chapters.find(c => c.id === chId) || DATA.chapters.find(c => c.id === 'c1');
@@ -826,11 +844,11 @@
           <div class="course-heading"><span class="eyebrow">THƯ VIỆN NGỮ PHÁP</span><h2>Học & tra cứu</h2><p class="course-summary">${learned.size}/30 chương đã học · 3 chặng</p></div>
           <div class="searchbox">
             <label for="searchInput">Tìm trong toàn bộ tài liệu</label>
-            <input type="search" id="searchInput" placeholder="Ví dụ: đảo ngữ, wish, mạo từ…" autocomplete="off" aria-controls="searchResults" aria-describedby="searchHelp" aria-expanded="false">
+            <input type="search" id="searchInput" placeholder="Tra cứu ngữ pháp…" autocomplete="off" aria-controls="searchResults" aria-describedby="searchHelp" aria-expanded="false">
             <span id="searchHelp" class="small muted">Tìm có dấu hoặc không dấu · từ 2 ký tự</span>
             <div class="search-results" id="searchResults" style="display:none" aria-label="Kết quả tìm kiếm"></div>
           </div>
-          <button class="btn ghost sm toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="tocList">☰ Chọn chương học</button>
+          <button class="btn ghost sm toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="tocList">${ch.kind === 'chapter' ? 'Chương ' + ch.num : 'Chọn bài'} ▾</button>
           <nav class="toc-list" id="tocList" aria-label="Các chương theo trình tự học">${tocHtml}</nav>
         </div>
         <div class="resizer" id="tocResizer" title="Kéo để chỉnh độ rộng mục lục"></div>
@@ -840,21 +858,23 @@
             <h1>${esc(ch.title)}</h1>
             <p class="learn-meta">${ch.kind === 'chapter' ? 'Phần ' + ch.part + ' · ' : ''}${Math.max(1, Math.ceil(ch.md.split(/\s+/).length / 180))} phút đọc tham khảo · ${sections.length} phần${learned.has(ch.id) ? ' · ✓ Đã đánh dấu học' : ''}</p>
           </header>
-          <nav class="card lesson-outline" aria-label="Mục lục trong bài">
-            <details id="sectionOutline"><summary>Mục lục trong bài · chọn phần cần đọc</summary>
-              <ol class="section-toc">${sections.map((s, i) => '<li><a href="#/learn/' + ch.id + '/' + (s.kind === 'theory' ? i - 1 : s.kind === 'start' ? 'start' : s.kind) + '" data-index="' + i + '">' + esc(s.title) + '</a></li>').join('')}</ol>
-            </details>
-          </nav>
+          <aside class="reader-tools" aria-label="Điều khiển đọc và mục lục bài">
           <div class="reader-toolbar">
-            <div class="reader-modes" role="group" aria-label="Cách đọc bài"><button class="btn ghost sm" id="readerFocusBtn">Đọc từng phần</button><button class="btn ghost sm" id="readerAllBtn">Xem toàn bài</button></div>
+            <div class="reader-modes" role="group" aria-label="Cách đọc bài"><button class="btn ghost sm" id="readerFocusBtn" aria-label="Đọc từng phần">Từng phần</button><button class="btn ghost sm" id="readerAllBtn" aria-label="Xem toàn bài">Toàn bài</button></div>
             <div class="reader-position" id="readerPosition" role="status" aria-live="polite"></div>
             <progress id="readerProgress" max="${sections.length}" value="1"></progress>
           </div>
-          <div class="card">
+          <nav class="lesson-outline" aria-label="Mục lục trong bài">
+            <details id="sectionOutline"><summary><span class="outline-title">Trong bài</span> <span id="outlineCount"></span></summary>
+              <ol class="section-toc">${sections.map((s, i) => '<li><a href="#/learn/' + ch.id + '/' + (s.kind === 'theory' ? i - 1 : s.kind === 'start' ? 'start' : s.kind) + '" data-index="' + i + '">' + esc(s.title) + '</a></li>').join('')}</ol>
+            </details>
+          </nav>
+          </aside>
+          <article class="card lesson-card">
             <div class="md" id="mdContent">${sections.map((s, i) => '<section class="lesson-section" id="' + s.id + '" data-index="' + i + '" tabindex="-1">' + s.html + '</section>').join('')}</div>
             <nav class="lesson-pager" aria-label="Điều hướng trong bài"><button class="btn ghost" id="sectionPrevBtn">← Phần trước</button><button class="btn" id="sectionNextBtn">Phần tiếp theo →</button></nav>
             <div class="chapter-actions" id="chapterActions"></div>
-          </div>
+          </article>
         </div>
       </div>
     `;
@@ -875,8 +895,7 @@
         // Use the content line below the sticky controls. A section that merely
         // ends at the top of the viewport must not override a newly opened one.
         if (entries.some(e => e.isIntersecting)) {
-          const toolbar = document.querySelector('.reader-toolbar');
-          const readingLine = toolbar.getBoundingClientRect().bottom + 80;
+          const readingLine = readerTopOffset() + 1;
           let active = 0;
           document.querySelectorAll('.lesson-section').forEach((el, i) => {
             if (el.getBoundingClientRect().top <= readingLine) active = i;
@@ -893,15 +912,16 @@
     const idx = all.findIndex(c => c.id === ch.id);
     const prev = all[idx - 1], next = all[idx + 1];
     let btns = '';
-    if (prev) btns += `<button class="btn ghost" onclick="location.hash='#/learn/${prev.id}'">← ${esc(shortTitle(prev))}</button>`;
+    let chapterNav = '';
+    if (prev) chapterNav += `<a class="back-link" href="#/learn/${prev.id}">← ${esc(shortTitle(prev))}</a>`;
     if (ch.kind === 'chapter') {
       btns += learned.has(ch.id)
         ? `<button class="btn ghost" id="unlearnBtn" title="Học ${fmtVN(store.data.chapters[ch.id].learnedOn)}, ôn lại ${fmtVN(store.data.chapters[ch.id].next)}">✓ Đã học — bỏ đánh dấu</button>`
         : `<button class="btn green" id="learnBtn">✓ Đánh dấu đã học</button>`;
       btns += `<button class="btn" onclick="location.hash='#/quiz/practice/${ch.id}'">🎯 Luyện chương này</button>`;
     }
-    if (next) btns += `<button class="btn ghost" onclick="location.hash='#/learn/${next.id}'">${esc(shortTitle(next))} →</button>`;
-    acts.innerHTML = btns;
+    if (next) chapterNav += `<a class="back-link" href="#/learn/${next.id}">${esc(shortTitle(next))} →</a>`;
+    acts.innerHTML = (btns ? '<div class="completion-actions">' + btns + '</div>' : '') + '<nav class="chapter-nav" aria-label="Chương trước và chương sau">' + chapterNav + '</nav>';
 
     const lb = $('#learnBtn');
     if (lb) lb.onclick = () => { markLearned(ch.id); renderLearn(ch.id); };
@@ -911,6 +931,9 @@
     // nút mục lục trên mobile
     const tt = $('#tocToggle');
     if (tt) tt.onclick = () => { const open = $('#tocList').classList.toggle('open'); tt.setAttribute('aria-expanded', !!open); };
+    $('#tocList').onkeydown = e => {
+      if (e.key === 'Escape' && tt) { $('#tocList').classList.remove('open'); tt.setAttribute('aria-expanded', 'false'); tt.focus(); }
+    };
 
     // kéo chỉnh độ rộng mục lục (lưu lại cho lần sau)
     const wrap = document.querySelector('.learn-wrap');
@@ -925,7 +948,8 @@
       document.body.classList.add('resizing');
       const move = ev => {
         const bounds = wrap.getBoundingClientRect();
-        const w = Math.min(560, Math.max(200, bounds.width * .28), Math.max(200, ev.clientX - bounds.left));
+        const rootFont = window.getComputedStyle ? parseFloat(window.getComputedStyle(document.documentElement).fontSize) : 16;
+        const w = Math.min(18 * rootFont, Math.max(15 * rootFont, ev.clientX - bounds.left));
         wrap.style.setProperty('--toc-w', w + 'px');
         store.data.settings.tocWidth = w;
       };
@@ -941,6 +965,42 @@
     };
 
     setupSearch();
+    if (window.matchMedia) {
+      const layout = window.matchMedia('(min-width: 88rem)');
+      const outline = $('#sectionOutline');
+      const tools = document.querySelector('.reader-tools');
+      const positionOutline = () => {
+        if (layout.matches || !outline.open || !tools.getBoundingClientRect) return;
+        const bounds = tools.getBoundingClientRect();
+        const below = window.innerHeight - bounds.bottom - 20;
+        const above = bounds.top - 20;
+        const side = below >= 180 || below >= above ? 'below' : 'above';
+        tools.setAttribute('data-outline-side', side);
+        tools.style.setProperty('--outline-room', Math.max(64, side === 'below' ? below : above) + 'px');
+      };
+      const syncOutline = () => { outline.open = layout.matches; positionOutline(); };
+      syncOutline();
+      layout.addEventListener('change', syncOutline);
+      outline.ontoggle = positionOutline;
+      outline.onkeydown = e => {
+        if (e.key === 'Escape' && !layout.matches) {
+          outline.open = false;
+          const summary = document.querySelector('#sectionOutline summary');
+          if (summary) summary.focus();
+        }
+      };
+      window.addEventListener('resize', positionOutline);
+      window.addEventListener('scroll', positionOutline, { passive: true });
+      readerLayoutCleanup = () => {
+        layout.removeEventListener('change', syncOutline);
+        outline.ontoggle = null;
+        outline.onkeydown = null;
+        if (window.removeEventListener) {
+          window.removeEventListener('resize', positionOutline);
+          window.removeEventListener('scroll', positionOutline);
+        }
+      };
+    }
     if (sectionArg !== undefined) showReaderSection(readerState.index, true);
   }
 
@@ -1541,6 +1601,20 @@
   function boot() {
     store.load();
     applyTheme();
+    const navToggle = $('#navToggle');
+    if (navToggle) navToggle.onclick = () => {
+      const open = $('#nav').classList.toggle('open');
+      navToggle.setAttribute('aria-expanded', !!open);
+    };
+    if (navToggle) $('#nav').onkeydown = e => {
+      if (e.key === 'Escape') { $('#nav').classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); navToggle.focus(); }
+    };
+    if (window.ResizeObserver) {
+      const topbar = document.querySelector('.topbar');
+      const syncHeader = () => document.documentElement.style.setProperty('--topbar-height', topbar.getBoundingClientRect().height + 'px');
+      new window.ResizeObserver(syncHeader).observe(topbar);
+      syncHeader();
+    }
     const skip = document.querySelector('.skip-link');
     if (skip) skip.onclick = e => { e.preventDefault(); view().focus(); view().scrollIntoView({ block: 'start' }); };
     $('#themeBtn').onclick = () => {

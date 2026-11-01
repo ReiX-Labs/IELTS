@@ -9,12 +9,16 @@ const mdText = fs.readFileSync(path.join(__dirname, '..', 'IELTS_Grammar_7_5.md'
 
 /* ---------- DOM giả lập ---------- */
 const headerHTML = `
+  <header class="topbar">
   <span id="streakPill"></span><button id="themeBtn"></button><span id="xpPill"></span>
-  <a data-route="home"></a><a data-route="learn"></a><a data-route="quiz"></a><a data-route="cards"></a><a data-route="ex"></a>`;
+  <button id="navToggle"></button><nav class="nav" id="nav">
+  <a data-route="home"></a><a data-route="learn"></a><a data-route="quiz"></a><a data-route="cards"></a><a data-route="ex"></a>
+  </nav></header>`;
 let htmlLog = headerHTML; // toàn bộ HTML "đang hiển thị"
 let era = 0;
 const cacheById = new Map();   // era:id -> stub
 const cacheBySel = new Map();  // era:sel -> [stubs]
+const headerById = new Map(); // Header survives view rerenders, as in the browser.
 
 function makeStub(extra, isView) {
   const attributes = {};
@@ -45,6 +49,7 @@ function makeStub(extra, isView) {
     disabled: false, hidden: false, value: '', textContent: '', scrollLeft: 0, scrollWidth: 0,
     focus() { this._focused = true; }, click() { if (this.onclick) this.onclick({ preventDefault() {} }); }, scrollIntoView() { this._scrolled = true; }, remove() {}, appendChild() {},
     files: [], className: '',
+    getBoundingClientRect() { return this._rect || { top: 0, left: 0, width: 1000, height: 64, bottom: 64, right: 1000 }; },
     querySelectorAll(sel) { return queryAllIn(this._inner, sel); },
   };
   Object.defineProperty(el, 'innerHTML', {
@@ -62,11 +67,16 @@ function makeStub(extra, isView) {
 }
 
 const viewEl = makeStub(null, true);
+const topbarEl = makeStub();
 
 function idPresent(id) { return htmlLog.includes('id="' + id + '"'); }
 function byId(id) {
   if (id === 'view') return viewEl;
   if (!idPresent(id)) return null;
+  if (['streakPill', 'themeBtn', 'xpPill', 'navToggle', 'nav'].includes(id)) {
+    if (!headerById.has(id)) headerById.set(id, makeStub());
+    return headerById.get(id);
+  }
   const key = era + ':' + id;
   if (!cacheById.has(key)) cacheById.set(key, makeStub());
   return cacheById.get(key);
@@ -105,18 +115,42 @@ function cacheBySel_get(key, n) {
 }
 
 const listeners = {};
+const mediaQueries = new Map();
+const resizeObservers = [];
+function mediaQuery(query) {
+  if (!mediaQueries.has(query)) {
+    const handlers = new Set();
+    mediaQueries.set(query, {
+      matches: false, media: query, handlers,
+      addEventListener(type, handler) { if (type === 'change') handlers.add(handler); },
+      removeEventListener(type, handler) { if (type === 'change') handlers.delete(handler); }
+    });
+  }
+  return mediaQueries.get(query);
+}
+function setMediaMatch(query, matches) {
+  const media = mediaQuery(query);
+  if (media.matches === matches) return;
+  media.matches = matches;
+  [...media.handlers].forEach(handler => handler({ matches, media: query }));
+}
 const location = { hash: '' };
 const window = {
   IELTSParser: P, renderMd,
   addEventListener(ev, fn) { listeners[ev] = fn; },
+  matchMedia: mediaQuery,
+  ResizeObserver: class {
+    constructor(callback) { this.callback = callback; resizeObservers.push(this); }
+    observe(target) { this.target = target; }
+  },
   scrollTo() {},
 };
 new Function('window', fs.readFileSync(path.join(__dirname, 'lesson-guide.js'), 'utf8'))(window);
 const document = {
-  documentElement: { dataset: {} },
+  documentElement: makeStub(),
   body: makeStub(),
   addEventListener() {}, removeEventListener() {},
-  querySelector(sel) { return sel[0] === '#' ? byId(sel.slice(1)) : (countIn(htmlLog, sel) ? queryAllIn(htmlLog, sel)[0] : null); },
+  querySelector(sel) { return sel === '.topbar' ? topbarEl : sel[0] === '#' ? byId(sel.slice(1)) : (countIn(htmlLog, sel) ? queryAllIn(htmlLog, sel)[0] : null); },
   querySelectorAll(sel) { return queryAllIn(htmlLog, sel); },
   getElementById(id) { return byId(id); },
   createElement() { return makeStub({ href: '', download: '' }); },
@@ -152,9 +186,23 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('home render', htmlLog.includes('Chào Long') && htmlLog.includes('Bài học hôm nay'));
   check('home: chương 1 được giao', htmlLog.includes('Chương 1:'));
   check('heatmap render', (htmlLog.match(/hm-cell/g) || []).length > 100);
+  check('menu thu gọn ban đầu đóng', byId('navToggle').getAttribute('aria-expanded') === 'false');
+  byId('navToggle').onclick();
+  check('nút menu mở điều hướng và trạng thái truy cập',
+    byId('nav').classList.contains('open') && byId('navToggle').getAttribute('aria-expanded') === 'true');
+  check('độ cao header được đo lúc khởi động',
+    document.documentElement.style.getPropertyValue('--topbar-height') === '64px');
+  topbarEl._rect = { height: 96 };
+  resizeObservers[0].callback();
+  check('ResizeObserver cập nhật độ lệch header khi chiều cao thay đổi',
+    resizeObservers[0].target === topbarEl && document.documentElement.style.getPropertyValue('--topbar-height') === '96px');
+  topbarEl._rect = { height: 64 };
+  resizeObservers[0].callback();
 
   // LEARN
   goto('#/learn/c3');
+  check('đổi trang đóng menu thu gọn',
+    !byId('nav').classList.contains('open') && byId('navToggle').getAttribute('aria-expanded') === 'false');
   check('learn c3 render', htmlLog.includes('Thì động từ') && htmlLog.includes('Present Simple'));
   check('learn có nút luyện chương', htmlLog.includes('Luyện chương này'));
   check('learn có thanh kéo cột', htmlLog.includes('tocResizer'));
@@ -167,6 +215,10 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   goto('#/learn/c3');
   check('tôn trọng độ rộng 560px đã lưu mà không ghi đè tùy chọn',
     document.querySelector('.learn-wrap').style.getPropertyValue('--toc-w') === '560px' &&
+    JSON.parse(localStorage.getItem('ielts75_v1')).settings.tocWidth === 560);
+  setMediaMatch('(min-width: 88rem)', true);
+  setMediaMatch('(min-width: 88rem)', false);
+  check('đổi bố cục không ghi đè độ rộng mục lục 560px đã lưu',
     JSON.parse(localStorage.getItem('ielts75_v1')).settings.tocWidth === 560);
   reader.store.data.settings.tocWidth = 'invalid-width';
   reader.store.save();
@@ -182,6 +234,28 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
     return JSON.stringify(saved);
   };
   const beforeReading = unchangedLearningData();
+  const layoutQuery = '(min-width: 88rem)';
+  check('bố cục hẹp thu mục lục trong bài', byId('sectionOutline').open === false);
+  check('rerender bài chỉ giữ một listener theo dõi bố cục', mediaQuery(layoutQuery).handlers.size === 1);
+  setMediaMatch(layoutQuery, true);
+  check('chuyển sang bố cục rộng mở mục lục trong bài', byId('sectionOutline').open === true);
+  byId('sectionNextBtn').onclick();
+  check('chuyển phần trên bố cục rộng giữ mục lục mở và cập nhật bộ đếm',
+    byId('sectionOutline').open === true && byId('outlineCount').textContent === '2/' + reader.state.sections.length);
+  const sectionBeforeResize = reader.state.index;
+  setMediaMatch(layoutQuery, false);
+  check('thu hẹp bố cục đóng mục lục và giữ vị trí đọc',
+    byId('sectionOutline').open === false && reader.state.index === sectionBeforeResize);
+  goto('#/');
+  check('rời bài gỡ listener bố cục', mediaQuery(layoutQuery).handlers.size === 0);
+  setMediaMatch(layoutQuery, true);
+  goto('#/learn/c3/start');
+  check('vào bài trên bố cục rộng mở mục lục với đúng một listener',
+    byId('sectionOutline').open === true && mediaQuery(layoutQuery).handlers.size === 1);
+  goto('#/learn/c3/start');
+  check('đổi link trong bài không tích lũy listener bố cục', mediaQuery(layoutQuery).handlers.size === 1);
+  setMediaMatch(layoutQuery, false);
+  check('đổi bố cục và điều hướng không sửa dữ liệu học', beforeReading === unchangedLearningData());
   const originalSections = reader.data.chapters.find(ch => ch.id === 'c3').lines.filter(line => /^### /.test(line));
   const renderedSections = reader.state.sections;
   check('bài có mục tiêu → lý thuyết → tự luyện → tiêu chí',
@@ -261,6 +335,7 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('nút đánh dấu đã học tồn tại', !!lb);
   lb.onclick();
   check('c1 đã học → nút đổi', htmlLog.includes('bỏ đánh dấu'));
+  check('đánh dấu đã học và render lại bài không làm rò listener bố cục', mediaQuery(layoutQuery).handlers.size === 1);
 
   // QUIZ NGÀY — làm trọn 10 câu
   goto('#/quiz');
