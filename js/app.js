@@ -716,6 +716,7 @@
   function lessonHtml(md) {
     let html = window.renderMd ? window.renderMd(md) : '<pre>' + esc(md) + '</pre>';
     html = html.replace(/<p>(⚠️[\s\S]*?)<\/p>/g, '<p class="callout note">$1</p>')
+      .replace(/<p>(<strong>Công thức[^<]*<\/strong>[\s\S]*?)<\/p>/g, '<p class="formula-box">$1</p>')
       .replace(/<p>(🎯[\s\S]*?)<\/p>/g, '<p class="callout tip">$1</p>')
       .replace(/<blockquote>(\s*<p>✅[\s\S]*?)<\/blockquote>/g, '<blockquote class="callout example"><span class="section-label">Ví dụ</span>$1</blockquote>');
     // Keep long reference tables available without putting every row on screen.
@@ -785,8 +786,7 @@
     const tools = document.querySelector('.reader-tools');
     const position = window.getComputedStyle(header).position;
     const headerHeight = position === 'sticky' || position === 'fixed' ? header.getBoundingClientRect().height : 0;
-    const wide = window.matchMedia('(min-width: 88rem)').matches;
-    return headerHeight + (wide ? 0 : tools.getBoundingClientRect().height) + 24;
+    return headerHeight + tools.getBoundingClientRect().height + 16;
   }
 
   function showReaderSection(index, scroll) {
@@ -799,8 +799,8 @@
       if (section) {
         const target = readerState.mode === 'focus' ? document.querySelector('.learn-header') : section;
         const outline = $('#sectionOutline');
-        const wide = window.matchMedia && window.matchMedia('(min-width: 88rem)').matches;
-        if (readerState.mode === 'focus' && outline && !wide) outline.open = false;
+        const wide = window.matchMedia && window.matchMedia('(min-width: 90rem)').matches;
+        if (outline && !wide) outline.open = false;
         if (readerState.mode === 'all' && window.getComputedStyle && section.getBoundingClientRect) {
           window.scrollTo({ top: Math.max(0, window.scrollY + section.getBoundingClientRect().top - readerTopOffset()), behavior: 'auto' });
         } else target.scrollIntoView({ behavior: 'auto', block: 'start' });
@@ -840,7 +840,8 @@
 
     view().innerHTML = `
       <div class="learn-wrap">
-        <div class="card sidebar">
+        <div class="card sidebar" id="courseSidebar" role="region" aria-label="Thư viện chương">
+          <button class="sidebar-close btn ghost" id="libraryClose" aria-label="Đóng thư viện chương">Đóng thư viện ×</button>
           <div class="course-heading"><span class="eyebrow">THƯ VIỆN NGỮ PHÁP</span><h2>Học & tra cứu</h2><p class="course-summary">${learned.size}/30 chương đã học · 3 chặng</p></div>
           <div class="searchbox">
             <label for="searchInput">Tìm trong toàn bộ tài liệu</label>
@@ -851,7 +852,7 @@
           <button class="btn ghost sm toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="tocList">${ch.kind === 'chapter' ? 'Chương ' + ch.num : 'Chọn bài'} ▾</button>
           <nav class="toc-list" id="tocList" aria-label="Các chương theo trình tự học">${tocHtml}</nav>
         </div>
-        <div class="resizer" id="tocResizer" title="Kéo để chỉnh độ rộng mục lục"></div>
+        <button class="library-scrim" id="libraryScrim" tabindex="-1" aria-label="Đóng thư viện chương"></button>
         <div class="content">
           <header class="learn-header">
             <div class="eyebrow"><a href="#/">Trang chủ</a> / <a href="#/learn/intro">Ngữ pháp</a> / ${ch.kind === 'chapter' ? 'Chương ' + ch.num : 'Tài liệu tham khảo'}</div>
@@ -860,16 +861,17 @@
           </header>
           <aside class="reader-tools" aria-label="Điều khiển đọc và mục lục bài">
           <div class="reader-toolbar">
+            <button class="btn ghost library-toggle" id="libraryToggle" aria-controls="courseSidebar" aria-expanded="false">☰ Thư viện</button>
             <div class="reader-modes" role="group" aria-label="Cách đọc bài"><button class="btn ghost sm" id="readerFocusBtn" aria-label="Đọc từng phần">Từng phần</button><button class="btn ghost sm" id="readerAllBtn" aria-label="Xem toàn bài">Toàn bài</button></div>
             <div class="reader-position" id="readerPosition" role="status" aria-live="polite"></div>
             <progress id="readerProgress" max="${sections.length}" value="1"></progress>
           </div>
+          </aside>
           <nav class="lesson-outline" aria-label="Mục lục trong bài">
             <details id="sectionOutline"><summary><span class="outline-title">Trong bài</span> <span id="outlineCount"></span></summary>
               <ol class="section-toc">${sections.map((s, i) => '<li><a href="#/learn/' + ch.id + '/' + (s.kind === 'theory' ? i - 1 : s.kind === 'start' ? 'start' : s.kind) + '" data-index="' + i + '">' + esc(s.title) + '</a></li>').join('')}</ol>
             </details>
           </nav>
-          </aside>
           <article class="card lesson-card">
             <div class="md" id="mdContent">${sections.map((s, i) => '<section class="lesson-section" id="' + s.id + '" data-index="' + i + '" tabindex="-1">' + s.html + '</section>').join('')}</div>
             <nav class="lesson-pager" aria-label="Điều hướng trong bài"><button class="btn ghost" id="sectionPrevBtn">← Phần trước</button><button class="btn" id="sectionNextBtn">Phần tiếp theo →</button></nav>
@@ -917,8 +919,8 @@
     if (ch.kind === 'chapter') {
       btns += learned.has(ch.id)
         ? `<button class="btn ghost" id="unlearnBtn" title="Học ${fmtVN(store.data.chapters[ch.id].learnedOn)}, ôn lại ${fmtVN(store.data.chapters[ch.id].next)}">✓ Đã học — bỏ đánh dấu</button>`
-        : `<button class="btn green" id="learnBtn">✓ Đánh dấu đã học</button>`;
-      btns += `<button class="btn" onclick="location.hash='#/quiz/practice/${ch.id}'">🎯 Luyện chương này</button>`;
+        : `<button class="btn ghost" id="learnBtn">✓ Đánh dấu đã học</button>`;
+      btns += `<button class="btn ghost" onclick="location.hash='#/quiz/practice/${ch.id}'">Luyện chương này ↗</button>`;
     }
     if (next) chapterNav += `<a class="back-link" href="#/learn/${next.id}">${esc(shortTitle(next))} →</a>`;
     acts.innerHTML = (btns ? '<div class="completion-actions">' + btns + '</div>' : '') + '<nav class="chapter-nav" aria-label="Chương trước và chương sau">' + chapterNav + '</nav>';
@@ -935,38 +937,44 @@
       if (e.key === 'Escape' && tt) { $('#tocList').classList.remove('open'); tt.setAttribute('aria-expanded', 'false'); tt.focus(); }
     };
 
-    // kéo chỉnh độ rộng mục lục (lưu lại cho lần sau)
+    // Desktop remembers the rail preference; tablets open a temporary drawer.
     const wrap = document.querySelector('.learn-wrap');
+    const libraryToggle = $('#libraryToggle');
+    const desktopLayout = window.matchMedia('(min-width: 90rem)');
+    const setLibrary = (open, focus = true) => {
+      const drawer = open && !desktopLayout.matches;
+      wrap.classList.toggle('library-open', drawer);
+      wrap.classList.toggle('library-closed', !open && desktopLayout.matches);
+      libraryToggle.setAttribute('aria-expanded', open);
+      libraryToggle.textContent = open && desktopLayout.matches ? 'Ẩn thư viện' : '☰ Thư viện';
+      $('#courseSidebar').setAttribute('role', drawer ? 'dialog' : 'region');
+      if (drawer) $('#courseSidebar').setAttribute('aria-modal', 'true');
+      else $('#courseSidebar').removeAttribute('aria-modal');
+      if (focus) (open ? $('#searchInput') : libraryToggle).focus();
+    };
+    libraryToggle.onclick = () => {
+      const open = libraryToggle.getAttribute('aria-expanded') !== 'true';
+      if (desktopLayout.matches) { store.data.settings.libraryCollapsed = !open; store.save(); }
+      setLibrary(open);
+    };
+    $('#libraryClose').onclick = $('#libraryScrim').onclick = () => setLibrary(false);
+    $('#courseSidebar').onkeydown = e => {
+      if (e.key === 'Escape') { e.preventDefault(); setLibrary(false); }
+      if (e.key === 'Tab' && !desktopLayout.matches) {
+        const items = Array.from($('#courseSidebar').querySelectorAll('button, input, a[href]')).filter(el => el.getClientRects().length && !el.disabled);
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     const savedTocWidth = Number(store.data.settings.tocWidth);
     if (wrap && wrap.style.setProperty && Number.isFinite(savedTocWidth) && savedTocWidth > 0) {
       wrap.style.setProperty('--toc-w', Math.min(560, Math.max(200, savedTocWidth)) + 'px');
     }
-    const rz = $('#tocResizer');
-    if (rz) rz.onmousedown = e => {
-      e.preventDefault();
-      rz.classList.add('dragging');
-      document.body.classList.add('resizing');
-      const move = ev => {
-        const bounds = wrap.getBoundingClientRect();
-        const rootFont = window.getComputedStyle ? parseFloat(window.getComputedStyle(document.documentElement).fontSize) : 16;
-        const w = Math.min(18 * rootFont, Math.max(15 * rootFont, ev.clientX - bounds.left));
-        wrap.style.setProperty('--toc-w', w + 'px');
-        store.data.settings.tocWidth = w;
-      };
-      const up = () => {
-        document.removeEventListener('mousemove', move);
-        document.removeEventListener('mouseup', up);
-        rz.classList.remove('dragging');
-        document.body.classList.remove('resizing');
-        store.save();
-      };
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', up);
-    };
 
     setupSearch();
     if (window.matchMedia) {
-      const layout = window.matchMedia('(min-width: 88rem)');
+      const layout = desktopLayout;
       const outline = $('#sectionOutline');
       const tools = document.querySelector('.reader-tools');
       const positionOutline = () => {
@@ -976,9 +984,13 @@
         const above = bounds.top - 20;
         const side = below >= 180 || below >= above ? 'below' : 'above';
         tools.setAttribute('data-outline-side', side);
-        tools.style.setProperty('--outline-room', Math.max(64, side === 'below' ? below : above) + 'px');
+        outline.style.setProperty('--outline-room', Math.max(64, side === 'below' ? below : above) + 'px');
       };
-      const syncOutline = () => { outline.open = layout.matches; positionOutline(); };
+      const syncOutline = () => {
+        outline.open = layout.matches;
+        setLibrary(layout.matches && !store.data.settings.libraryCollapsed, false);
+        positionOutline();
+      };
       syncOutline();
       layout.addEventListener('change', syncOutline);
       outline.ontoggle = positionOutline;

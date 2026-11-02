@@ -205,7 +205,8 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
     !byId('nav').classList.contains('open') && byId('navToggle').getAttribute('aria-expanded') === 'false');
   check('learn c3 render', htmlLog.includes('Thì động từ') && htmlLog.includes('Present Simple'));
   check('learn có nút luyện chương', htmlLog.includes('Luyện chương này'));
-  check('learn có thanh kéo cột', htmlLog.includes('tocResizer'));
+  check('learn có điều khiển thư viện với tên và quan hệ truy cập',
+    htmlLog.includes('id="libraryToggle" aria-controls="courseSidebar"') && !!byId('libraryClose'));
   const reader = window.__testReader;
   check('chưa chọn độ rộng mục lục thì giữ mặc định responsive của CSS',
     document.querySelector('.learn-wrap').style.getPropertyValue('--toc-w') === '' &&
@@ -216,8 +217,8 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('tôn trọng độ rộng 560px đã lưu mà không ghi đè tùy chọn',
     document.querySelector('.learn-wrap').style.getPropertyValue('--toc-w') === '560px' &&
     JSON.parse(localStorage.getItem('ielts75_v1')).settings.tocWidth === 560);
-  setMediaMatch('(min-width: 88rem)', true);
-  setMediaMatch('(min-width: 88rem)', false);
+  setMediaMatch('(min-width: 90rem)', true);
+  setMediaMatch('(min-width: 90rem)', false);
   check('đổi bố cục không ghi đè độ rộng mục lục 560px đã lưu',
     JSON.parse(localStorage.getItem('ielts75_v1')).settings.tocWidth === 560);
   reader.store.data.settings.tocWidth = 'invalid-width';
@@ -234,7 +235,46 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
     return JSON.stringify(saved);
   };
   const beforeReading = unchangedLearningData();
-  const layoutQuery = '(min-width: 88rem)';
+  const layoutQuery = '(min-width: 90rem)';
+  const libraryOpen = () => byId('libraryToggle').getAttribute('aria-expanded') === 'true';
+  const libraryClass = name => document.querySelector('.learn-wrap').classList.contains(name);
+  check('tablet bắt đầu với thư viện đóng để dành chỗ cho bài học', !libraryOpen() && !libraryClass('library-open'));
+  byId('libraryToggle').onclick();
+  check('tablet mở thư viện và chuyển focus đến tìm kiếm',
+    libraryOpen() && libraryClass('library-open') && byId('searchInput')._focused);
+  byId('courseSidebar').onkeydown({ key: 'Escape', preventDefault() {} });
+  check('Escape đóng thư viện tablet và trả focus về nút mở',
+    !libraryOpen() && !libraryClass('library-open') && byId('libraryToggle')._focused);
+  byId('libraryToggle').onclick();
+  byId('libraryScrim').onclick();
+  check('chạm vùng ngoài đóng thư viện tablet', !libraryOpen() && !libraryClass('library-open'));
+  byId('libraryToggle').onclick();
+  byId('libraryClose').onclick();
+  check('nút đóng thư viện tablet hoạt động', !libraryOpen() && !libraryClass('library-open'));
+  setMediaMatch(layoutQuery, true);
+  check('desktop mặc định hiện thư viện', libraryOpen() && !libraryClass('library-closed'));
+  byId('libraryToggle').onclick();
+  check('desktop thu thư viện và lưu tùy chọn',
+    !libraryOpen() && libraryClass('library-closed') && JSON.parse(localStorage.getItem('ielts75_v1')).settings.libraryCollapsed === true);
+  goto('#/learn/c3');
+  check('render lại bài giữ thư viện desktop đã thu', !libraryOpen() && libraryClass('library-closed'));
+  setMediaMatch(layoutQuery, false);
+  byId('libraryToggle').onclick();
+  check('mở drawer tablet không ghi đè tùy chọn desktop',
+    libraryOpen() && libraryClass('library-open') && JSON.parse(localStorage.getItem('ielts75_v1')).settings.libraryCollapsed === true);
+  setMediaMatch(layoutQuery, true);
+  check('resize từ drawer tablet khôi phục desktop đã thu',
+    !libraryOpen() && !libraryClass('library-open') && libraryClass('library-closed'));
+  byId('libraryToggle').onclick();
+  check('desktop mở lại thư viện và lưu tùy chọn',
+    libraryOpen() && !libraryClass('library-closed') && JSON.parse(localStorage.getItem('ielts75_v1')).settings.libraryCollapsed === false);
+  setMediaMatch(layoutQuery, false);
+  check('thu viewport đóng thư viện dù desktop đang mở', !libraryOpen() && !libraryClass('library-open'));
+  byId('libraryToggle').onclick();
+  setMediaMatch(layoutQuery, true);
+  check('resize bỏ trạng thái drawer và khôi phục desktop đang mở', libraryOpen() && !libraryClass('library-open') && !libraryClass('library-closed'));
+  setMediaMatch(layoutQuery, false);
+  check('thao tác thư viện và resize giữ nguyên dữ liệu học', beforeReading === unchangedLearningData());
   check('bố cục hẹp thu mục lục trong bài', byId('sectionOutline').open === false);
   check('rerender bài chỉ giữ một listener theo dõi bố cục', mediaQuery(layoutQuery).handlers.size === 1);
   setMediaMatch(layoutQuery, true);
@@ -447,6 +487,8 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   // Boot the real app again against populated storage, as a browser reload does.
   goto('#/learn/c3/5');
   byId('readerAllBtn').onclick();
+  setMediaMatch(layoutQuery, true);
+  byId('libraryToggle').onclick();
   const progressBeforeReload = unchangedLearningData();
   const savedSettings = JSON.parse(localStorage.getItem('ielts75_v1')).settings;
   run(window, document, location, localStorage, fetch, confirm, alert, URL, Blob, FileReader, (fn) => fn(), console);
@@ -456,6 +498,8 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
     window.__testReader.state.index === savedSettings.readingSections.c3);
   check('tải lại app giữ nguyên XP, tiến độ, SRS, quiz, huy hiệu và từ vựng',
     progressBeforeReload === unchangedLearningData());
+  check('tải lại app khôi phục tùy chọn thu thư viện desktop',
+    savedSettings.libraryCollapsed === true && !libraryOpen() && libraryClass('library-closed'));
 
   console.log(fails === 0 ? '\nALL PASS (' + steps + ' quiz steps)' : '\n' + fails + ' FAILED');
   process.exit(fails ? 1 : 0);
