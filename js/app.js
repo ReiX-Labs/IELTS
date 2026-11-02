@@ -8,7 +8,6 @@
   let DATA = null;          // kết quả parse
   let SEARCH_INDEX = [];    // {chId, chTitle, secTitle, body, secIdx}
   let readerState = null;
-  let readerObserver = null;
   let readerLayoutCleanup = null;
 
   /* ================= utils ================= */
@@ -396,7 +395,6 @@
   const routes = [];
   function route(re, fn) { routes.push({ re, fn }); }
   function navigate() {
-    if (readerObserver) readerObserver.disconnect();
     if (readerLayoutCleanup) { readerLayoutCleanup(); readerLayoutCleanup = null; }
     readerState = null;
     const h = location.hash.replace(/^#/, '') || '/';
@@ -789,6 +787,21 @@
     return headerHeight + tools.getBoundingClientRect().height + 16;
   }
 
+  function readerPane() {
+    return window.matchMedia('(min-width: 48rem) and (min-height: 40rem)').matches ? $('#lessonPane') : null;
+  }
+
+  function scrollReaderToSection(section) {
+    const pane = readerPane();
+    if (pane) {
+      window.scrollTo(0, 0);
+      pane.scrollTop = readerState.mode === 'focus' ? 0 : Math.max(0,
+        pane.scrollTop + section.getBoundingClientRect().top - pane.getBoundingClientRect().top - 20);
+    } else if (readerState.mode === 'all' && window.getComputedStyle && section.getBoundingClientRect) {
+      window.scrollTo({ top: Math.max(0, window.scrollY + section.getBoundingClientRect().top - readerTopOffset()), behavior: 'auto' });
+    } else document.querySelector('.learn-header').scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
+
   function showReaderSection(index, scroll) {
     if (!readerState) return;
     readerState.index = Math.min(readerState.sections.length - 1, Math.max(0, index));
@@ -797,13 +810,10 @@
     if (scroll) {
       const section = document.getElementById(readerState.sections[readerState.index].id);
       if (section) {
-        const target = readerState.mode === 'focus' ? document.querySelector('.learn-header') : section;
         const outline = $('#sectionOutline');
         const wide = window.matchMedia && window.matchMedia('(min-width: 90rem)').matches;
         if (outline && !wide) outline.open = false;
-        if (readerState.mode === 'all' && window.getComputedStyle && section.getBoundingClientRect) {
-          window.scrollTo({ top: Math.max(0, window.scrollY + section.getBoundingClientRect().top - readerTopOffset()), behavior: 'auto' });
-        } else target.scrollIntoView({ behavior: 'auto', block: 'start' });
+        scrollReaderToSection(section);
         section.focus({ preventScroll: true });
       }
     }
@@ -816,7 +826,6 @@
   }
 
   function renderLearn(chId, sectionArg) {
-    if (readerObserver) readerObserver.disconnect();
     if (readerLayoutCleanup) { readerLayoutCleanup(); readerLayoutCleanup = null; }
     view().classList.add('wide');
     chId = chId || store.data.settings.lastChapter || 'c1';
@@ -872,7 +881,7 @@
               <ol class="section-toc">${sections.map((s, i) => '<li><a href="#/learn/' + ch.id + '/' + (s.kind === 'theory' ? i - 1 : s.kind === 'start' ? 'start' : s.kind) + '" data-index="' + i + '">' + esc(s.title) + '</a></li>').join('')}</ol>
             </details>
           </nav>
-          <article class="card lesson-card">
+          <article class="card lesson-card" id="lessonPane" tabindex="0" aria-label="Nội dung bài học">
             <div class="md" id="mdContent">${sections.map((s, i) => '<section class="lesson-section" id="' + s.id + '" data-index="' + i + '" tabindex="-1">' + s.html + '</section>').join('')}</div>
             <nav class="lesson-pager" aria-label="Điều hướng trong bài"><button class="btn ghost" id="sectionPrevBtn">← Phần trước</button><button class="btn" id="sectionNextBtn">Phần tiếp theo →</button></nav>
             <div class="chapter-actions" id="chapterActions"></div>
@@ -890,24 +899,6 @@
     document.querySelectorAll('.section-toc a').forEach((el, i) => {
       el.onclick = e => { e.preventDefault(); showReaderSection(i, true); };
     });
-    // Whole-article reading follows the visible section; this never marks a chapter learned.
-    if (window.IntersectionObserver) {
-      readerObserver = new window.IntersectionObserver(entries => {
-        if (!readerState || readerState.mode !== 'all') return;
-        // Use the content line below the sticky controls. A section that merely
-        // ends at the top of the viewport must not override a newly opened one.
-        if (entries.some(e => e.isIntersecting)) {
-          const readingLine = readerTopOffset() + 1;
-          let active = 0;
-          document.querySelectorAll('.lesson-section').forEach((el, i) => {
-            if (el.getBoundingClientRect().top <= readingLine) active = i;
-          });
-          readerState.index = active; updateReaderUI(); saveReaderPosition();
-        }
-      }, { rootMargin: '-15% 0px -55% 0px', threshold: 0 });
-      document.querySelectorAll('.lesson-section').forEach(el => readerObserver.observe(el));
-    }
-
     // actions
     const acts = $('#chapterActions');
     const all = DATA.chapters;
@@ -1001,19 +992,47 @@
           if (summary) summary.focus();
         }
       };
-      window.addEventListener('resize', positionOutline);
+      const pane = $('#lessonPane');
+      const boundedLayout = window.matchMedia('(min-width: 48rem) and (min-height: 40rem)');
+      const syncScrollLayout = () => {
+        const section = document.getElementById(readerState.sections[readerState.index].id);
+        scrollReaderToSection(section);
+      };
+      const trackReading = () => {
+        if (!readerState || readerState.mode !== 'all') return;
+        const root = readerPane();
+        const line = root ? root.getBoundingClientRect().top + 21 : readerTopOffset() + 1;
+        let active = 0;
+        document.querySelectorAll('.lesson-section').forEach((el, i) => {
+          if (el.getBoundingClientRect().top <= line) active = i;
+        });
+        const top = root ? root.scrollTop : window.scrollY;
+        const remaining = root ? root.scrollHeight - root.clientHeight - top : document.documentElement.scrollHeight - window.innerHeight - top;
+        if (top > 0 && remaining <= 2) active = readerState.sections.length - 1;
+        if (active !== readerState.index) {
+          readerState.index = active; updateReaderUI(); saveReaderPosition();
+        }
+      };
+      pane.addEventListener('scroll', trackReading, { passive: true });
+      window.addEventListener('scroll', trackReading, { passive: true });
+      boundedLayout.addEventListener('change', syncScrollLayout);
+      const resizeReader = () => { positionOutline(); syncScrollLayout(); };
+      window.addEventListener('resize', resizeReader);
       window.addEventListener('scroll', positionOutline, { passive: true });
       readerLayoutCleanup = () => {
         layout.removeEventListener('change', syncOutline);
+        boundedLayout.removeEventListener('change', syncScrollLayout);
+        pane.removeEventListener('scroll', trackReading);
+        window.removeEventListener('scroll', trackReading);
         outline.ontoggle = null;
         outline.onkeydown = null;
         if (window.removeEventListener) {
-          window.removeEventListener('resize', positionOutline);
+          window.removeEventListener('resize', resizeReader);
           window.removeEventListener('scroll', positionOutline);
         }
       };
     }
-    if (sectionArg !== undefined) showReaderSection(readerState.index, true);
+    if (sectionArg !== undefined || readerState.mode === 'all') showReaderSection(readerState.index, true);
   }
 
   function shortTitle(c) {

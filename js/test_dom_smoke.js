@@ -24,7 +24,11 @@ function makeStub(extra, isView) {
   const attributes = {};
   const styleProperties = {};
   const classes = new Set();
+  const events = {};
   const el = {
+    _events: events,
+    addEventListener(name, handler) { (events[name] || (events[name] = new Set())).add(handler); },
+    removeEventListener(name, handler) { if (events[name]) events[name].delete(handler); },
     _inner: '',
     style: {
       setProperty(name, value) { styleProperties[name] = String(value); },
@@ -46,7 +50,7 @@ function makeStub(extra, isView) {
       if (name.startsWith('data-')) delete this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())];
     },
     onclick: null, oninput: null, onblur: null, onkeydown: null, onchange: null,
-    disabled: false, hidden: false, value: '', textContent: '', scrollLeft: 0, scrollWidth: 0,
+    disabled: false, hidden: false, value: '', textContent: '', scrollLeft: 0, scrollWidth: 0, scrollTop: 0,
     focus() { this._focused = true; }, click() { if (this.onclick) this.onclick({ preventDefault() {} }); }, scrollIntoView() { this._scrolled = true; }, remove() {}, appendChild() {},
     files: [], className: '',
     getBoundingClientRect() { return this._rect || { top: 0, left: 0, width: 1000, height: 64, bottom: 64, right: 1000 }; },
@@ -138,6 +142,7 @@ const location = { hash: '' };
 const window = {
   IELTSParser: P, renderMd,
   addEventListener(ev, fn) { listeners[ev] = fn; },
+  removeEventListener(ev, fn) { if (listeners[ev] === fn) delete listeners[ev]; },
   matchMedia: mediaQuery,
   ResizeObserver: class {
     constructor(callback) { this.callback = callback; resizeObservers.push(this); }
@@ -296,6 +301,33 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('đổi link trong bài không tích lũy listener bố cục', mediaQuery(layoutQuery).handlers.size === 1);
   setMediaMatch(layoutQuery, false);
   check('đổi bố cục và điều hướng không sửa dữ liệu học', beforeReading === unchangedLearningData());
+  const boundedQuery = '(min-width: 48rem) and (min-height: 40rem)';
+  setMediaMatch(boundedQuery, true);
+  goto('#/learn/c3/start');
+  const pane = byId('lessonPane');
+  pane._rect = { top: 200, height: 500, bottom: 700 };
+  pane.scrollTop = 350;
+  byId('sectionNextBtn').onclick();
+  check('chuyển phần đặt lại cuộn trong bài thay vì kéo cả trang', pane.scrollTop === 0);
+  byId('readerAllBtn').onclick();
+  pane.scrollTop = 250;
+  byId(reader.state.sections[3].id)._rect = { top: 900 };
+  document.querySelectorAll('.section-toc a')[3].onclick({ preventDefault() {} });
+  check('mục lục toàn bài tính tọa độ theo vùng cuộn', pane.scrollTop === 930 && reader.state.index === 3);
+  pane.scrollHeight = 6000; pane.clientHeight = 500; pane.scrollTop = 1200;
+  document.querySelectorAll('.lesson-section').forEach((el, i) => { el._rect = { top: 200 + (i - 4) * 400 }; });
+  [...pane._events.scroll].forEach(fn => fn());
+  check('cuộn vùng bài cập nhật mục đang đọc và liên kết', reader.state.index === 4 && byId('readerPosition').textContent.startsWith('Phần 5/'));
+  pane.scrollTop = 5500;
+  [...pane._events.scroll].forEach(fn => fn());
+  check('cuối vùng cuộn nhận đúng phần cuối kể cả phần ngắn', reader.state.index === reader.state.sections.length - 1);
+  byId('readerFocusBtn').onclick();
+  check('đổi toàn bài sang từng phần giữ mục và đưa cuộn về đầu', pane.scrollTop === 0 && reader.state.index === reader.state.sections.length - 1);
+  goto('#/');
+  check('rời trang gỡ sự kiện cuộn và theo dõi đổi kiểu bố cục', pane._events.scroll.size === 0 && mediaQuery(boundedQuery).handlers.size === 0);
+  setMediaMatch(boundedQuery, false);
+  goto('#/learn/c3/start');
+  check('đọc và cuộn bài không đổi XP, SRS hoặc hoàn thành chương', beforeReading === unchangedLearningData());
   const originalSections = reader.data.chapters.find(ch => ch.id === 'c3').lines.filter(line => /^### /.test(line));
   const renderedSections = reader.state.sections;
   check('bài có mục tiêu → lý thuyết → tự luyện → tiêu chí',

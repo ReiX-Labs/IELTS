@@ -25,3 +25,19 @@ Bản trước giới hạn trang ở 1600px rồi căn giữa khung bài khoả
 - [MDN — Media query fundamentals](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/CSS_layout/Media_queries)
 
 Các breakpoint và kích thước là quyết định riêng cho nội dung này, không phải quy định của các nguồn trên.
+
+
+## Sửa scroll và footer — 03/11/2026
+
+Bằng chứng trước sửa: viewport 2560×1300, trang bài ngắn c3/8 cao 1435px; footer bắt đầu ở y=1336. Sidebar dùng gần trọn viewport nhưng padding main và footer vẫn cộng thêm bên ngoài. Mục lục phải trải qua ba hàng grid tự động khiến chiều cao dư chia vào tiêu đề/thanh đọc. Trang quiz thiếu main co giãn nên footer nằm ngay dưới câu hỏi.
+
+Thay đổi:
+- Body dùng flex theo cột, chiều cao tối thiểu 100dvh và main nhận phần chiều cao còn lại. Trang thường có footer cuối màn hình nếu nội dung ngắn, sau nội dung nếu dài; không dùng footer fixed che nội dung.
+- Trang học từ 768px rộng và 640px cao dùng khung vừa viewport. Main, grid và các vùng con có min-height:0; các hàng là max-content / max-content / minmax(0,1fr). Sidebar và bài lấy giới hạn chiều cao từ khung này, không cộng thêm một viewport.
+- Bài, danh sách chương và mục lục cuộn độc lập, overscroll-behavior-y:contain ngăn cuộn lan sang vùng cha. Khung bài ngắn chỉ cao theo nội dung; bài dài cuộn trong chiều cao còn lại. Footer chiếm 49px trong bố cục.
+- Điều hướng phần tính tọa độ theo vùng bài; đọc toàn bài theo dõi sự kiện scroll của vùng thực tế. Chuyển về từng phần đặt scrollTop=0; thay kích thước vẫn giữ phần đang đọc. Bỏ IntersectionObserver chỉ theo viewport cũ. Vùng bài có tabindex và tên để dùng bàn phím.
+- Điện thoại hoặc cửa sổ thấp tiếp tục cuộn tài liệu tự nhiên.
+
+Kiểm tra riêng: cuộn bánh xe qua cuối danh sách chương; cuộn toàn bài và Ctrl+End; đổi toàn bài/từng phần; footer trang quiz ngắn; mở mục trong bài ở tablet. Smoke test kiểm tra tọa độ vùng cuộn, cập nhật mục khi cuộn, cuối bài, reset scroll, gỡ listener và giữ nguyên dữ liệu học.
+
+Nguồn đã đọc: [MDN Sticky footers](https://developer.mozilla.org/en-US/docs/Web/CSS/How_to/Layout_cookbook/Sticky_footers), [MDN overscroll-behavior](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/overscroll-behavior), [MDN position](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/position). Các lựa chọn khung trang học ở trên là cách áp dụng cho dự án này.

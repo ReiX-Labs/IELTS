@@ -43,6 +43,10 @@ html[data-theme="light"] {
 html { scroll-behavior: auto; }
 body {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -54,6 +58,7 @@ button { font-family: inherit; }
 
 /* ---------- Topbar ---------- */
 .topbar {
+  flex-shrink: 0;
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; gap: 18px;
   padding: 10px 20px;
@@ -84,7 +89,7 @@ button { font-family: inherit; }
 .icon-btn:hover { border-color: var(--accent); }
 
 /* ---------- Layout ---------- */
-.view { max-width: 1200px; margin: 0 auto; padding: 24px 20px 80px; }
+.view { flex: 1 0 auto; width: 100%; max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
 .loading { text-align: center; padding: 80px 0; color: var(--muted); }
 .spinner {
   width: 36px; height: 36px; margin: 0 auto 12px;
@@ -357,7 +362,7 @@ dialog { max-width: min(560px, calc(100vw - 24px)); background: var(--surface); 
 .library-closed .sidebar { display: none; }
 .library-scrim, .sidebar-close, .toc-toggle { display: none; }
 .sidebar { display: flex; flex-direction: column; position: sticky; top: calc(var(--topbar-height) + 24px); height: calc(100dvh - var(--topbar-height) - 48px); padding: 16px; box-shadow: none; }
-.toc-list { min-height: 0; overflow-y: auto; scrollbar-width: thin; flex: 1; }
+.toc-list { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: thin; flex: 1; }
 .sidebar .searchbox, .course-heading { flex-shrink: 0; }
 .resizer { display: none; }
 .course-heading { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
@@ -383,7 +388,7 @@ dialog { max-width: min(560px, calc(100vw - 24px)); background: var(--surface); 
 .search-count { border-bottom: 1px solid var(--border); }
 
 /* ---------- Reading pane and in-article navigation ---------- */
-.content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; position: relative; }
+.content { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: max-content max-content auto; gap: 16px; align-items: start; align-content: start; position: relative; }
 .learn-header, .reader-tools, .lesson-card { width: 100%; min-width: 0; }
 .learn-header { grid-column: 1; grid-row: 1; }
 .reader-tools { grid-column: 1; grid-row: 2; }
@@ -478,13 +483,13 @@ dialog { max-width: min(560px, calc(100vw - 24px)); background: var(--surface); 
 .start-steps span { color: var(--muted); font-size: .8125rem; }
 
 /* ---------- Footer stays in document flow ---------- */
-.site-footer { display: flex; align-items: center; justify-content: center; gap: 22px; flex-wrap: wrap; padding: 24px 20px 30px; margin-top: 12px; border-top: 1px solid var(--border); }
+.site-footer { flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 8px 20px; margin-top: 0; border-top: 1px solid var(--border); }
 .reix-footer { color: var(--muted); font-size: .75rem; text-align: center; }
 .reix-footer b { color: var(--accent); }
-.reix-credit { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.reix-credit { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 .reix-credit:hover { border-color: var(--accent); }
 .reix-credit__by { color: var(--muted); font-size: .6875rem; }
-.reix-credit img { height: 25px; width: auto; display: block; }
+.reix-credit img { height: 20px; width: auto; display: block; }
 .reix-credit .rx-white { display: none; }
 .reix-mark { display: inline-block; width: 48px; height: 26px; background: url(../img/reix-logo.png) center/contain no-repeat; }
 html[data-theme="dark"] .reix-mark { background-image: url(../img/reix-logo-white.png); }
@@ -603,6 +608,23 @@ html[data-theme="dark"] .reix-credit .rx-white { display: block; }
   .streak-pill { display: none; }
   .xp-pill { padding-inline: 6px; }
   .reader-modes button { padding-inline: 6px; font-size: .75rem; }
+}
+/* Learning is a bounded workspace on PC/tablet. Only the pane under the
+   pointer scrolls; the header, controls and footer do not join that scroll. */
+@media (min-width: 48rem) and (min-height: 40rem) {
+  body:has(> .view.wide) { height: 100dvh; overflow: hidden; }
+  .view.wide { flex: 1 1 0; min-height: 0; padding-block: 16px; }
+  .learn-wrap, .learn-wrap.library-closed { height: 100%; min-height: 0; }
+  .content { height: 100%; min-height: 0; grid-template-rows: max-content max-content minmax(0, 1fr); }
+  .sidebar { position: relative; top: auto; height: 100%; min-height: 0; }
+  .reader-tools { position: relative; top: auto; }
+  .lesson-card { max-height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; scroll-padding-block: 20px; }
+  .lesson-section { scroll-margin-top: 0; }
+  .lesson-outline { position: relative; top: auto; }
+  .section-toc, .search-results { overscroll-behavior-y: contain; }
+}
+@media (min-width: 90rem) and (min-height: 40rem) {
+  .lesson-outline { height: 100%; min-height: 0; max-height: 100%; overflow-y: auto; overscroll-behavior-y: contain; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
