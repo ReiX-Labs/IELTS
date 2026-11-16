@@ -301,7 +301,7 @@ function goto(hash) { location.hash = hash; listeners.hashchange(); }
   check('đổi link trong bài không tích lũy listener bố cục', mediaQuery(layoutQuery).handlers.size === 1);
   setMediaMatch(layoutQuery, false);
   check('đổi bố cục và điều hướng không sửa dữ liệu học', beforeReading === unchangedLearningData());
-  const boundedQuery = '(min-width: 48rem) and (min-height: 40rem)';
+  const boundedQuery = '(min-width: 90rem) and (min-height: 40rem)';
   setMediaMatch(boundedQuery, true);
   goto('#/learn/c3/start');
   const pane = byId('lessonPane');

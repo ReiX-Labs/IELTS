@@ -9,6 +9,10 @@
   let SEARCH_INDEX = [];    // {chId, chTitle, secTitle, body, secIdx}
   let readerState = null;
   let readerLayoutCleanup = null;
+  // Only wide, tall desktop windows scroll the lesson inside its own pane.
+  // Tablets and phones scroll the page naturally, which is easier with touch.
+  const BOUNDED_LAYOUT = '(min-width: 90rem) and (min-height: 40rem)';
+  const TOUCH_INPUT = '(hover: none), (pointer: coarse)';
 
   /* ================= utils ================= */
   const $ = sel => document.querySelector(sel);
@@ -502,18 +506,36 @@
         </div>
       </div>
 
-      <section class="card home-start" aria-labelledby="startTitle">
-        <div class="eyebrow">HỌC CÓ TRÌNH TỰ</div>
-        <h2 id="startTitle">Hôm nay, bắt đầu từ đâu?</h2>
-        <p>Mỗi buổi tập trung một chủ điểm. Đọc giải thích và ví dụ, tự viết câu rồi kiểm tra lại trước khi đánh dấu đã học.</p>
-        <ol class="start-steps">
-          <li><a href="#/learn/${tc ? tc.id : (store.data.settings.lastChapter || 'c1')}"><strong>Học một bài</strong></a><span>Đi từng phần, có mục tiêu và ví dụ.</span></li>
-          <li><a href="#/quiz"><strong>Ôn điều đã học</strong></a><span>10 câu, ưu tiên kiến thức đến hạn.</span></li>
-          <li><a href="#/learn"><strong>Tra cứu khi cần</strong></a><span>Tìm chủ điểm, công thức hoặc lỗi thường gặp.</span></li>
-        </ol>
-      </section>
+      <div class="grid cols2 home-today">
+        <div class="card today-card">
+          <h3>📖 Bài học hôm nay</h3>
+          ${tc ? `
+            <div class="title">Chương ${tc.num}: ${esc(tc.title)}</div>
+            <div class="progressbar"><i style="width:${Math.round(learnedCount / totalCh * 100)}%"></i></div>
+            <div class="muted small">Đã học ${learnedCount}/${totalCh} chương</div>
+            <div class="q-actions">
+              <button class="btn big" onclick="location.hash='#/learn/${tc.id}'">Học ngay →</button>
+            </div>`
+            : `
+            <div class="title">🎓 Bạn đã học hết 30 chương!</div>
+            <div class="muted small">Giờ là lúc ôn tập vòng lặp — quiz mỗi ngày sẽ tự chọn chương đến hạn ôn.</div>
+            <div class="q-actions"><button class="btn ghost" onclick="location.hash='#/learn'">Đọc lại tài liệu</button></div>`}
+        </div>
 
-      <div class="card" style="margin-bottom:16px">
+        <div class="card quiz-card">
+          <h3>📝 Quiz hôm nay</h3>
+          ${quizDone
+            ? `<div class="title">Đã hoàn thành: ${ci.quiz.score}/${ci.quiz.total} câu ${ci.quiz.score / ci.quiz.total >= 0.7 ? '🎉' : '💪'}</div>
+               <div class="muted small">Muốn luyện thêm? Làm bộ ngẫu nhiên không giới hạn.</div>
+               <div class="q-actions"><button class="btn ghost" onclick="location.hash='#/quiz/practice'">Luyện thêm 10 câu</button></div>`
+            : `<div class="title">10 câu ôn tập đang chờ bạn</div>
+               <div class="muted small">${due.length ? 'Hôm nay ôn lại: ' + due.length + ' chương đến hạn.' : 'Câu hỏi lấy từ các chương bạn đang học.'}</div>
+               <div class="q-actions"><button class="btn green" onclick="location.hash='#/quiz'">Làm quiz ngay →</button></div>`}
+          ${due.length ? `<div class="due-chips">${dueChips}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="card home-block">
         <h3 style="margin:0 0 12px">🎯 Nhiệm vụ hôm nay — ${msDone}/3${(ci && ci.bonus) ? ' · 🎁 +20 XP bonus' : ''}</h3>
         <div class="missions">
           <div class="mission-ring">
@@ -535,34 +557,7 @@
         </div>
       </div>
 
-      <div class="grid cols2">
-        <div class="card today-card">
-          <h3>📖 Bài học hôm nay</h3>
-          ${tc ? `
-            <div class="title">Chương ${tc.num}: ${esc(tc.title)}</div>
-            <div class="progressbar"><i style="width:${Math.round(learnedCount / totalCh * 100)}%"></i></div>
-            <div class="muted small">Đã học ${learnedCount}/${totalCh} chương</div>
-            <div class="q-actions">
-              <button class="btn" onclick="location.hash='#/learn/${tc.id}'">Học ngay →</button>
-            </div>`
-            : `
-            <div class="title">🎓 Bạn đã học hết 30 chương!</div>
-            <div class="muted small">Giờ là lúc ôn tập vòng lặp — quiz mỗi ngày sẽ tự chọn chương đến hạn ôn.</div>
-            <div class="q-actions"><button class="btn ghost" onclick="location.hash='#/learn'">Đọc lại tài liệu</button></div>`}
-        </div>
-
-        <div class="card quiz-card">
-          <h3>📝 Quiz hôm nay</h3>
-          ${quizDone
-            ? `<div class="title">Đã hoàn thành: ${ci.quiz.score}/${ci.quiz.total} câu ${ci.quiz.score / ci.quiz.total >= 0.7 ? '🎉' : '💪'}</div>
-               <div class="muted small">Muốn luyện thêm? Làm bộ ngẫu nhiên không giới hạn.</div>
-               <div class="q-actions"><button class="btn ghost" onclick="location.hash='#/quiz/practice'">Luyện thêm 10 câu</button></div>`
-            : `<div class="title">10 câu ôn tập đang chờ bạn</div>
-               <div class="muted small">${due.length ? 'Hôm nay ôn lại: ' + due.length + ' chương đến hạn.' : 'Câu hỏi lấy từ các chương bạn đang học.'}</div>
-               <div class="q-actions"><button class="btn green" onclick="location.hash='#/quiz'">Làm quiz ngay →</button></div>`}
-          ${due.length ? `<div class="due-chips">${dueChips}</div>` : ''}
-        </div>
-
+      <div class="grid cols2 home-block">
         <div class="card review-card">
           <h3>🧠 Ghi nhớ tài liệu</h3>
           <div class="title">Thuộc ${rs.known}/${rs.total} mục</div>
@@ -583,6 +578,16 @@
           </div>
         </div>
       </div>
+
+      <details class="card home-start home-block">
+        <summary>Cách học có trình tự — 3 bước mỗi buổi</summary>
+        <p>Mỗi buổi tập trung một chủ điểm. Đọc giải thích và ví dụ, tự viết câu rồi kiểm tra lại trước khi đánh dấu đã học.</p>
+        <ol class="start-steps">
+          <li><a href="#/learn/${tc ? tc.id : (store.data.settings.lastChapter || 'c1')}"><strong>Học một bài</strong></a><span>Đi từng phần, có mục tiêu và ví dụ.</span></li>
+          <li><a href="#/quiz"><strong>Ôn điều đã học</strong></a><span>10 câu, ưu tiên kiến thức đến hạn.</span></li>
+          <li><a href="#/learn"><strong>Tra cứu khi cần</strong></a><span>Tìm chủ điểm, công thức hoặc lỗi thường gặp.</span></li>
+        </ol>
+      </details>
 
       <div class="card" style="margin-top:16px">
         <div class="level-wrap">
@@ -773,10 +778,18 @@
     $('#outlineCount').textContent = (r.index + 1) + '/' + r.sections.length;
     $('#readerProgress').value = r.index + 1;
     $('#readerProgress').setAttribute('aria-label', position);
+    const last = r.sections.length - 1;
     $('#sectionPrevBtn').disabled = r.index === 0;
-    $('#sectionNextBtn').disabled = r.index === r.sections.length - 1;
-    $('#sectionNextBtn').textContent = r.index < r.sections.length - 1 ? 'Tiếp: ' + r.sections[r.index + 1].title + ' →' : 'Đã đến phần cuối';
-    $('#sectionPrevBtn').textContent = r.index ? '← ' + r.sections[r.index - 1].title : '← Phần trước';
+    $('#sectionNextBtn').disabled = r.index === last;
+    // Two short lines read faster than one long label: direction first, then the part's name.
+    $('#sectionNextBtn').innerHTML = r.index < last
+      ? '<span class="pager-dir">Phần tiếp →</span><span class="pager-title">' + esc(r.sections[r.index + 1].title) + '</span>'
+      : '<span class="pager-dir">Đã đến phần cuối</span>';
+    $('#sectionPrevBtn').innerHTML = r.index
+      ? '<span class="pager-dir">← Phần trước</span><span class="pager-title">' + esc(r.sections[r.index - 1].title) + '</span>'
+      : '<span class="pager-dir">← Phần trước</span>';
+    // Chapter actions only appear once the learner reaches the end, so they do not compete with "next part".
+    $('#lessonPane').setAttribute('data-at-end', r.mode === 'all' || r.index === last ? 'true' : 'false');
   }
 
   function readerTopOffset() {
@@ -788,7 +801,7 @@
   }
 
   function readerPane() {
-    return window.matchMedia('(min-width: 48rem) and (min-height: 40rem)').matches ? $('#lessonPane') : null;
+    return window.matchMedia(BOUNDED_LAYOUT).matches ? $('#lessonPane') : null;
   }
 
   function scrollReaderToSection(section) {
@@ -797,9 +810,17 @@
       window.scrollTo(0, 0);
       pane.scrollTop = readerState.mode === 'focus' ? 0 : Math.max(0,
         pane.scrollTop + section.getBoundingClientRect().top - pane.getBoundingClientRect().top - 20);
-    } else if (readerState.mode === 'all' && window.getComputedStyle && section.getBoundingClientRect) {
-      window.scrollTo({ top: Math.max(0, window.scrollY + section.getBoundingClientRect().top - readerTopOffset()), behavior: 'auto' });
-    } else document.querySelector('.learn-header').scrollIntoView({ behavior: 'auto', block: 'start' });
+      return;
+    }
+    if (!window.getComputedStyle || !section.getBoundingClientRect) {
+      document.querySelector('.learn-header').scrollIntoView({ behavior: 'auto', block: 'start' });
+      return;
+    }
+    // Page scrolling: put the part just below the sticky reading bar. In focus mode only scroll
+    // back up, so opening a lesson still shows its title.
+    const target = readerState.mode === 'all' ? section : $('#lessonPane');
+    const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - readerTopOffset());
+    if (readerState.mode === 'all' || window.scrollY > top) window.scrollTo({ top, behavior: 'auto' });
   }
 
   function showReaderSection(index, scroll) {
@@ -877,7 +898,7 @@
           </div>
           </aside>
           <nav class="lesson-outline" aria-label="Mục lục trong bài">
-            <details id="sectionOutline"><summary><span class="outline-title">Trong bài</span> <span id="outlineCount"></span></summary>
+            <details id="sectionOutline"><summary><span class="outline-title">Mục lục</span> <span id="outlineCount"></span></summary>
               <ol class="section-toc">${sections.map((s, i) => '<li><a href="#/learn/' + ch.id + '/' + (s.kind === 'theory' ? i - 1 : s.kind === 'start' ? 'start' : s.kind) + '" data-index="' + i + '">' + esc(s.title) + '</a></li>').join('')}</ol>
             </details>
           </nav>
@@ -941,7 +962,18 @@
       $('#courseSidebar').setAttribute('role', drawer ? 'dialog' : 'region');
       if (drawer) $('#courseSidebar').setAttribute('aria-modal', 'true');
       else $('#courseSidebar').removeAttribute('aria-modal');
-      if (focus) (open ? $('#searchInput') : libraryToggle).focus();
+      if (open) {
+        // Show the current chapter in the list instead of always starting at chapter 1.
+        const list = $('#tocList');
+        const active = list && list.querySelector ? list.querySelector('.toc-item.active') : null;
+        if (active && typeof active.offsetTop === 'number') {
+          list.scrollTop = Math.max(0, active.offsetTop - list.offsetTop - list.clientHeight / 3);
+        }
+      }
+      if (!focus) return;
+      // On touch screens, focusing the search box would pop up the keyboard over half the drawer.
+      const touch = window.matchMedia && window.matchMedia(TOUCH_INPUT).matches;
+      (open ? (touch ? $('#libraryClose') : $('#searchInput')) : libraryToggle).focus();
     };
     libraryToggle.onclick = () => {
       const open = libraryToggle.getAttribute('aria-expanded') !== 'true';
@@ -993,7 +1025,7 @@
         }
       };
       const pane = $('#lessonPane');
-      const boundedLayout = window.matchMedia('(min-width: 48rem) and (min-height: 40rem)');
+      const boundedLayout = window.matchMedia(BOUNDED_LAYOUT);
       const syncScrollLayout = () => {
         const section = document.getElementById(readerState.sections[readerState.index].id);
         scrollReaderToSection(section);
@@ -1103,8 +1135,13 @@
   }
 
   function gotoSection(chId, secIdx) {
-    if (readerState && readerState.chId === chId) showReaderSection(secIdx + 1, true);
-    else location.hash = '#/learn/' + chId + '/' + (secIdx < 0 ? 'start' : secIdx);
+    if (readerState && readerState.chId === chId) {
+      // A result in the open lesson: close the tablet drawer so the jump is visible.
+      const wrap = document.querySelector('.learn-wrap');
+      const close = $('#libraryClose');
+      if (wrap && wrap.classList.contains('library-open') && close && close.onclick) close.onclick();
+      showReaderSection(secIdx + 1, true);
+    } else location.hash = '#/learn/' + chId + '/' + (secIdx < 0 ? 'start' : secIdx);
   }
 
   /* ================= QUIZ ================= */
